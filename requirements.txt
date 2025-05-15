@@ -1,3 +1,7 @@
 ladybug-core==0.44.11
 ladybug-geometry-polyskel==1.7.25
-honeybee-schema==1.59.0;python_version>='3.7'
+# honeybee-schema==1.59.0
+honeybee-schema @ git+https://github.com/Ayush-Abraham/honeybee-schema.git
+
+
+# python_version>='3.7'

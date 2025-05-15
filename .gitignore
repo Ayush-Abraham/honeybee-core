@@ -14,3 +14,5 @@ tox.ini
 .eggs
 honeybee.log*
 /build
+
+venv-hbc
