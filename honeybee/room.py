@@ -1,26 +1,39 @@
 # coding: utf-8
 """Honeybee Room."""
+
 from __future__ import division
 import math
 import uuid
 
 from ladybug_geometry.geometry2d import Point2D, Vector2D, Polygon2D
-from ladybug_geometry.geometry3d import Point3D, Vector3D, Ray3D, Plane, Face3D, \
-    Mesh3D, Polyface3D
+from ladybug_geometry.geometry3d import (
+    Point3D,
+    Vector3D,
+    Ray3D,
+    Plane,
+    Face3D,
+    Mesh3D,
+    Polyface3D,
+)
 from ladybug_geometry_polyskel.polysplit import perimeter_core_subpolygons
 
 import honeybee.writer.room as writer
 from ._basewithshade import _BaseWithShade
-from .typing import float_in_range, int_in_range, clean_string, \
-    invalid_dict_error
+from .typing import float_in_range, int_in_range, clean_string, invalid_dict_error
 from .properties import RoomProperties
 from .face import Face
 from .aperture import Aperture
 from .facetype import AirBoundary, Wall, Floor, RoofCeiling, get_type_from_normal
-from .boundarycondition import get_bc_from_position, Outdoors, Ground, Surface, \
-    boundary_conditions
+from .boundarycondition import (
+    get_bc_from_position,
+    Outdoors,
+    Ground,
+    Surface,
+    boundary_conditions,
+)
 from .orientation import angles_from_num_orient, orient_index
 from .search import get_attr_nested
+
 try:
     ad_bc = boundary_conditions.adiabatic
 except AttributeError:  # honeybee_energy is not loaded and adiabatic does not exist
@@ -84,12 +97,20 @@ class Room(_BaseWithShade):
         * average_floor_height
         * user_data
     """
-    __slots__ = (
-        '_geometry', '_faces', '_multiplier', '_zone', '_story',
-        '_exclude_floor_area',
-        '_parent')
 
-    def __init__(self, identifier, faces, tolerance=0, angle_tolerance=0):
+    __slots__ = (
+        "_geometry",
+        "_faces",
+        "_multiplier",
+        "_zone",
+        "_story",
+        "_exclude_floor_area",
+        "_parent",
+    )
+
+    def __init__(
+        self, identifier, faces: tuple[Face, ...], tolerance=0.0, angle_tolerance=0.0
+    ):
         """Initialize Room."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
 
@@ -97,20 +118,26 @@ class Room(_BaseWithShade):
         if not isinstance(faces, tuple):
             faces = tuple(faces)
         for face in faces:
-            assert isinstance(face, Face), \
-                'Expected honeybee Face. Got {}'.format(type(face))
+            assert isinstance(face, Face), "Expected honeybee Face. Got {}".format(
+                type(face)
+            )
             face._parent = self
 
         if tolerance == 0:
             self._faces = faces
-            self._geometry = None  # calculated later from faces or added by classmethods
+            self._geometry = (
+                None  # calculated later from faces or added by classmethods
+            )
         else:
             # try to get a closed volume between the faces
             room_polyface = Polyface3D.from_faces(
-                tuple(face.geometry for face in faces), tolerance)
+                tuple(face.geometry for face in faces), tolerance
+            )
             if not room_polyface.is_solid and angle_tolerance != 0:
                 ang_tol = math.radians(angle_tolerance)
-                room_polyface = room_polyface.merge_overlapping_edges(tolerance, ang_tol)
+                room_polyface = room_polyface.merge_overlapping_edges(
+                    tolerance, ang_tol
+                )
             # replace honeybee face geometry with versions that are facing outwards
             if room_polyface.is_solid:
                 for i, correct_face3d in enumerate(room_polyface.faces):
@@ -134,7 +161,7 @@ class Room(_BaseWithShade):
         self._properties = RoomProperties(self)  # properties for extensions
 
     @classmethod
-    def from_dict(cls, data, tolerance=0, angle_tolerance=0):
+    def from_dict(cls, data, tolerance=0.0, angle_tolerance=0.0):
         """Initialize an Room from a dictionary.
 
         Args:
@@ -151,40 +178,42 @@ class Room(_BaseWithShade):
         """
         try:
             # check the type of dictionary
-            assert data['type'] == 'Room', 'Expected Room dictionary. ' \
-                'Got {}.'.format(data['type'])
+            assert data["type"] == "Room", "Expected Room dictionary. Got {}.".format(
+                data["type"]
+            )
 
             # create the room object and assign properties
-            faces = []
-            for f_dict in data['faces']:
+            faces: list[Face] = []
+            for f_dict in data["faces"]:
                 try:
                     faces.append(Face.from_dict(f_dict))
                 except Exception as e:
                     invalid_dict_error(f_dict, e)
-            room = cls(data['identifier'], faces, tolerance, angle_tolerance)
-            if 'display_name' in data and data['display_name'] is not None:
-                room.display_name = data['display_name']
-            if 'user_data' in data and data['user_data'] is not None:
-                room.user_data = data['user_data']
-            if 'multiplier' in data and data['multiplier'] is not None:
-                room.multiplier = data['multiplier']
-            if 'zone' in data and data['zone'] is not None:
-                room.zone = data['zone']
-            if 'story' in data and data['story'] is not None:
-                room.story = data['story']
-            if 'exclude_floor_area' in data and data['exclude_floor_area'] is not None:
-                room.exclude_floor_area = data['exclude_floor_area']
+            room = cls(data["identifier"], tuple(faces), tolerance, angle_tolerance)
+            if "display_name" in data and data["display_name"] is not None:
+                room.display_name = data["display_name"]
+            if "user_data" in data and data["user_data"] is not None:
+                room.user_data = data["user_data"]
+            if "multiplier" in data and data["multiplier"] is not None:
+                room.multiplier = data["multiplier"]
+            if "zone" in data and data["zone"] is not None:
+                room.zone = data["zone"]
+            if "story" in data and data["story"] is not None:
+                room.story = data["story"]
+            if "exclude_floor_area" in data and data["exclude_floor_area"] is not None:
+                room.exclude_floor_area = data["exclude_floor_area"]
             room._recover_shades_from_dict(data)
 
-            if data['properties']['type'] == 'RoomProperties':
-                room.properties._load_extension_attr_from_dict(data['properties'])
+            if data["properties"]["type"] == "RoomProperties":
+                room.properties._load_extension_attr_from_dict(data["properties"])
             return room
         except Exception as e:
             cls._from_dict_error_message(data, e)
 
     @classmethod
-    def from_polyface3d(cls, identifier, polyface, roof_angle=60, floor_angle=130,
-                        ground_depth=0):
+    def from_polyface3d(
+        cls, identifier, polyface, roof_angle=60, floor_angle=130, ground_depth=0.0
+    ):
         """Initialize a Room from a ladybug_geometry Polyface3D object.
 
         Args:
@@ -207,20 +236,33 @@ class Room(_BaseWithShade):
                 instead of Ground. Faces will have a Ground boundary condition if
                 all of their vertices lie at or below this value. Default: 0.
         """
-        assert isinstance(polyface, Polyface3D), \
-            'Expected ladybug_geometry Polyface3D. Got {}'.format(type(polyface))
+        assert isinstance(polyface, Polyface3D), (
+            "Expected ladybug_geometry Polyface3D. Got {}".format(type(polyface))
+        )
         faces = []
         for i, face in enumerate(polyface.faces):
-            faces.append(Face('{}..Face{}'.format(identifier, i), face,
-                              get_type_from_normal(face.normal, roof_angle, floor_angle),
-                              get_bc_from_position(face.boundary, ground_depth)))
+            faces.append(
+                Face(
+                    "{}..Face{}".format(identifier, i),
+                    face,
+                    get_type_from_normal(face.normal, roof_angle, floor_angle),
+                    get_bc_from_position(face.boundary, ground_depth),
+                )
+            )
         room = cls(identifier, faces)
         room._geometry = polyface
         return room
 
     @classmethod
-    def from_box(cls, identifier, width=3.0, depth=6.0, height=3.2,
-                 orientation_angle=0, origin=Point3D(0, 0, 0)):
+    def from_box(
+        cls,
+        identifier,
+        width=3.0,
+        depth=6.0,
+        height=3.2,
+        orientation_angle=0,
+        origin=Point3D(0, 0, 0),
+    ):
         """Initialize a Room from parameters describing a box.
 
         The resulting faces of the room will always be ordered as follows:
@@ -242,19 +284,25 @@ class Room(_BaseWithShade):
         x_axis = Vector3D(1, 0, 0)
         if orientation_angle != 0:
             angle = -1 * math.radians(
-                float_in_range(orientation_angle, 0, 360, 'orientation_angle'))
+                float_in_range(orientation_angle, 0, 360, "orientation_angle")
+            )
             x_axis = x_axis.rotate_xy(angle)
         base_plane = Plane(Vector3D(0, 0, 1), origin, x_axis)
         polyface = Polyface3D.from_box(width, depth, height, base_plane)
 
         # create the honeybee Faces
-        directions = ('Bottom', 'Front', 'Right', 'Back', 'Left', 'Top')
-        faces = []
+        directions = ("Bottom", "Front", "Right", "Back", "Left", "Top")
+        faces: list[Face] = []
         for face, dir in zip(polyface.faces, directions):
-            faces.append(Face('{}_{}'.format(identifier, dir), face,
-                              get_type_from_normal(face.normal),
-                              get_bc_from_position(face.boundary)))
-        room = cls(identifier, faces)
+            faces.append(
+                Face(
+                    "{}_{}".format(identifier, dir),
+                    face,
+                    get_type_from_normal(face.normal),
+                    get_bc_from_position(face.boundary),
+                )
+            )
+        room = cls(identifier, tuple(faces))
         room._geometry = polyface
         return room
 
@@ -280,7 +328,7 @@ class Room(_BaseWithShade):
 
     @multiplier.setter
     def multiplier(self, value):
-        self._multiplier = int_in_range(value, 1, input_name='room multiplier')
+        self._multiplier = int_in_range(value, 1, input_name="room multiplier")
 
     @property
     def zone(self):
@@ -394,8 +442,10 @@ class Room(_BaseWithShade):
         """Get a tuple of all exterior Apertures of the Room."""
         aps = []
         for face in self._faces:
-            if isinstance(face.boundary_condition, Outdoors) and \
-                    len(face._apertures) > 0:
+            if (
+                isinstance(face.boundary_condition, Outdoors)
+                and len(face._apertures) > 0
+            ):
                 aps.extend(face._apertures)
         return tuple(aps)
 
@@ -404,7 +454,8 @@ class Room(_BaseWithShade):
         """Get a ladybug_geometry Polyface3D object representing the room."""
         if self._geometry is None:
             self._geometry = Polyface3D.from_faces(
-                tuple(face.geometry for face in self._faces), 0)  # use 0 tolerance
+                tuple(face.geometry for face in self._faces), 0
+            )  # use 0 tolerance
         return self._geometry
 
     @property
@@ -458,8 +509,13 @@ class Room(_BaseWithShade):
         Useful for estimating infiltration, often expressed as a flow per
         unit exposed envelope area.
         """
-        return sum([face.area for face in self._faces if
-                    isinstance(face.boundary_condition, Outdoors)])
+        return sum(
+            [
+                face.area
+                for face in self._faces
+                if isinstance(face.boundary_condition, Outdoors)
+            ]
+        )
 
     @property
     def exterior_wall_area(self):
@@ -483,8 +539,9 @@ class Room(_BaseWithShade):
         """
         wall_areas = 0
         for f in self._faces:
-            if isinstance(f.boundary_condition, Outdoors) and \
-                    isinstance(f.type, RoofCeiling):
+            if isinstance(f.boundary_condition, Outdoors) and isinstance(
+                f.type, RoofCeiling
+            ):
                 wall_areas += f.area
         return wall_areas
 
@@ -493,8 +550,10 @@ class Room(_BaseWithShade):
         """Get the combined area of all exterior apertures on the room."""
         ap_areas = 0
         for face in self._faces:
-            if isinstance(face.boundary_condition, Outdoors) and \
-                    len(face._apertures) > 0:
+            if (
+                isinstance(face.boundary_condition, Outdoors)
+                and len(face._apertures) > 0
+            ):
                 ap_areas += sum(ap.area for ap in face._apertures)
         return ap_areas
 
@@ -503,8 +562,11 @@ class Room(_BaseWithShade):
         """Get the combined area of all apertures on exterior walls of the room."""
         ap_areas = 0
         for face in self._faces:
-            if isinstance(face.boundary_condition, Outdoors) and \
-                    isinstance(face.type, Wall) and len(face._apertures) > 0:
+            if (
+                isinstance(face.boundary_condition, Outdoors)
+                and isinstance(face.type, Wall)
+                and len(face._apertures) > 0
+            ):
                 ap_areas += sum(ap.area for ap in face._apertures)
         return ap_areas
 
@@ -513,8 +575,11 @@ class Room(_BaseWithShade):
         """Get the combined area of all apertures on exterior roofs of the room."""
         ap_areas = 0
         for face in self._faces:
-            if isinstance(face.boundary_condition, Outdoors) and \
-                    isinstance(face.type, RoofCeiling) and len(face._apertures) > 0:
+            if (
+                isinstance(face.boundary_condition, Outdoors)
+                and isinstance(face.type, RoofCeiling)
+                and len(face._apertures) > 0
+            ):
                 ap_areas += sum(ap.area for ap in face._apertures)
         return ap_areas
 
@@ -585,8 +650,9 @@ class Room(_BaseWithShade):
         orientations = 0
         areas = 0
         for face in self._faces:
-            if isinstance(face.type, Wall) and \
-                    isinstance(face.boundary_condition, Outdoors):
+            if isinstance(face.type, Wall) and isinstance(
+                face.boundary_condition, Outdoors
+            ):
                 orientations += face.horizontal_orientation(north_vector) * face.area
                 areas += face.area
         return orientations / areas if areas != 0 else None
@@ -605,8 +671,8 @@ class Room(_BaseWithShade):
                 that this prefix be short to avoid maxing out the 100 allowable
                 characters for honeybee identifiers.
         """
-        self._identifier = clean_string('{}_{}'.format(prefix, self.identifier))
-        self.display_name = '{}_{}'.format(prefix, self.display_name)
+        self._identifier = clean_string("{}_{}".format(prefix, self.identifier))
+        self.display_name = "{}_{}".format(prefix, self.display_name)
         self.properties.add_prefix(prefix)
         for face in self._faces:
             face.add_prefix(prefix)
@@ -640,8 +706,10 @@ class Room(_BaseWithShade):
         try:
             horiz_bound = self._base_horiz_boundary(tolerance)
         except Exception as e:
-            msg = 'Room "{}" is not solid and so a valid horizontal boundary for ' \
-                'the Room could not be established.\n{}'.format(self.full_id, e)
+            msg = (
+                'Room "{}" is not solid and so a valid horizontal boundary for '
+                "the Room could not be established.\n{}".format(self.full_id, e)
+            )
             raise ValueError(msg)
         if match_walls:  # insert the wall vertices
             return self._match_walls_to_horizontal_faces([horiz_bound], tolerance)[0]
@@ -682,22 +750,28 @@ class Room(_BaseWithShade):
                 bound = [Point3D(p.x, p.y, floor_height) for p in flr_geo[0].boundary]
                 holes = None
                 if flr_geo[0].has_holes:
-                    holes = [[Point3D(p.x, p.y, floor_height) for p in hole]
-                             for hole in flr_geo[0].holes]
+                    holes = [
+                        [Point3D(p.x, p.y, floor_height) for p in hole]
+                        for hole in flr_geo[0].holes
+                    ]
                 horiz_bound = [Face3D(bound, holes=holes)]
         else:  # multiple geometries to be joined together
             floor_height = self.geometry.min.z
             horiz_geo = []
             for fg in flr_geo:
-                if fg.is_horizontal(tolerance) and \
-                        abs(floor_height - fg.min.z) <= tolerance:
+                if (
+                    fg.is_horizontal(tolerance)
+                    and abs(floor_height - fg.min.z) <= tolerance
+                ):
                     horiz_geo.append(fg)
                 else:  # project the face geometry into the XY plane
                     bound = [Point3D(p.x, p.y, floor_height) for p in fg.boundary]
                     holes = None
                     if fg.has_holes:
-                        holes = [[Point3D(p.x, p.y, floor_height) for p in hole]
-                                 for hole in fg.holes]
+                        holes = [
+                            [Point3D(p.x, p.y, floor_height) for p in hole]
+                            for hole in fg.holes
+                        ]
                     horiz_geo.append(Face3D(bound, holes=holes))
             # join the coplanar horizontal faces together
             horiz_bound = Face3D.join_coplanar_faces(horiz_geo, tolerance)
@@ -758,7 +832,8 @@ class Room(_BaseWithShade):
             if isinstance(face.type, Floor):
                 try:
                     floor_grids.append(
-                        face.geometry.mesh_grid(x_dim, y_dim, offset, True))
+                        face.geometry.mesh_grid(x_dim, y_dim, offset, True)
+                    )
                 except AssertionError:  # grid tolerance not fine enough
                     pass
         if len(floor_grids) == 1:
@@ -768,7 +843,8 @@ class Room(_BaseWithShade):
         return None
 
     def generate_exterior_face_grid(
-            self, dimension, offset=0.1, face_type='Wall', punched_geometry=False):
+        self, dimension, offset=0.1, face_type="Wall", punched_geometry=False
+    ):
         """Get a gridded Mesh3D offset from the exterior Faces of this Room.
 
         This will be None if the Room has no exterior Faces.
@@ -803,26 +879,26 @@ class Room(_BaseWithShade):
         """
         # select the correct face type based on the input
         face_t = face_type.title()
-        if face_t == 'Wall':
+        if face_t == "Wall":
             ft = Wall
-        elif face_t in ('Roof', 'Roofceiling'):
+        elif face_t in ("Roof", "Roofceiling"):
             ft = RoofCeiling
-        elif face_t == 'All':
+        elif face_t == "All":
             ft = (Wall, RoofCeiling, Floor)
-        elif face_t == 'Floor':
+        elif face_t == "Floor":
             ft = Floor
         else:
             raise ValueError('Unrecognized face_type "{}".'.format(face_type))
-        face_attr = 'punched_geometry' if punched_geometry else 'geometry'
+        face_attr = "punched_geometry" if punched_geometry else "geometry"
         # loop through the faces and generate grids
         face_grids = []
         for face in self._faces:
-            if isinstance(face.type, ft) and \
-                    isinstance(face.boundary_condition, Outdoors):
+            if isinstance(face.type, ft) and isinstance(
+                face.boundary_condition, Outdoors
+            ):
                 try:
                     f_geo = getattr(face, face_attr)
-                    face_grids.append(
-                        f_geo.mesh_grid(dimension, None, offset, False))
+                    face_grids.append(f_geo.mesh_grid(dimension, None, offset, False))
                 except AssertionError:  # grid tolerance not fine enough
                     pass
         # join the grids together if there are several ones
@@ -833,7 +909,8 @@ class Room(_BaseWithShade):
         return None
 
     def generate_exterior_aperture_grid(
-            self, dimension, offset=0.1, aperture_type='All'):
+        self, dimension, offset=0.1, aperture_type="All"
+    ):
         """Get a gridded Mesh3D offset from the exterior Apertures of this room.
 
         Will be None if the Room has no exterior Apertures.
@@ -864,23 +941,25 @@ class Room(_BaseWithShade):
         """
         # select the correct face type based on the input
         ap_t = aperture_type.title()
-        if ap_t == 'Window':
+        if ap_t == "Window":
             ft = Wall
-        elif ap_t == 'Skylight':
+        elif ap_t == "Skylight":
             ft = RoofCeiling
-        elif ap_t == 'All':
+        elif ap_t == "All":
             ft = (Wall, RoofCeiling, Floor)
         else:
             raise ValueError('Unrecognized aperture_type "{}".'.format(aperture_type))
         # loop through the faces and generate grids
         ap_grids = []
         for face in self._faces:
-            if isinstance(face.type, ft) and \
-                    isinstance(face.boundary_condition, Outdoors):
+            if isinstance(face.type, ft) and isinstance(
+                face.boundary_condition, Outdoors
+            ):
                 for ap in face.apertures:
                     try:
                         ap_grids.append(
-                            ap.geometry.mesh_grid(dimension, None, offset, False))
+                            ap.geometry.mesh_grid(dimension, None, offset, False)
+                        )
                     except AssertionError:  # grid tolerance not fine enough
                         pass
         # join the grids together if there are several ones
@@ -910,8 +989,9 @@ class Room(_BaseWithShade):
             room.wall_apertures_by_ratio(0.4)
         """
         for face in self._faces:
-            if isinstance(face.boundary_condition, Outdoors) and \
-                    isinstance(face.type, Wall):
+            if isinstance(face.boundary_condition, Outdoors) and isinstance(
+                face.type, Wall
+            ):
                 face.apertures_by_ratio(ratio, tolerance)
 
     def skylight_apertures_by_ratio(self, ratio, tolerance=0.01):
@@ -935,8 +1015,9 @@ class Room(_BaseWithShade):
             room.skylight_apertures_by_ratio(0.05)
         """
         for face in self._faces:
-            if isinstance(face.boundary_condition, Outdoors) and \
-                    isinstance(face.type, RoofCeiling):
+            if isinstance(face.boundary_condition, Outdoors) and isinstance(
+                face.type, RoofCeiling
+            ):
                 face.apertures_by_ratio(ratio, tolerance)
 
     def simplify_apertures(self, tolerance=0.01):
@@ -961,8 +1042,13 @@ class Room(_BaseWithShade):
                 face.apertures_by_ratio(face.aperture_ratio, tolerance)
 
     def rectangularize_apertures(
-            self, subdivision_distance=None, max_separation=None, merge_all=False,
-            tolerance=0.01, angle_tolerance=1.0):
+        self,
+        subdivision_distance=None,
+        max_separation=None,
+        merge_all=False,
+        tolerance=0.01,
+        angle_tolerance=1.0,
+    ):
         """Convert all Apertures on this Room to be rectangular.
 
         This is useful when exporting to simulation engines that only accept
@@ -999,12 +1085,16 @@ class Room(_BaseWithShade):
         """
         for face in self._faces:
             face.rectangularize_apertures(
-                subdivision_distance, max_separation, merge_all,
-                tolerance, angle_tolerance
+                subdivision_distance,
+                max_separation,
+                merge_all,
+                tolerance,
+                angle_tolerance,
             )
 
-    def ground_by_custom_surface(self, ground_geometry, tolerance=0.01,
-                                 angle_tolerance=1.0):
+    def ground_by_custom_surface(
+        self, ground_geometry, tolerance=0.01, angle_tolerance=1.0
+    ):
         """Set ground boundary conditions using an array of Face3D for the ground.
 
         Room faces that are coplanar with the ground surface or lie completely below it
@@ -1023,14 +1113,21 @@ class Room(_BaseWithShade):
                 coplanar. (Default: 1).
         """
         select_faces = self.faces_by_guide_surface(
-            ground_geometry, Vector3D(0, 0, -1), tolerance, angle_tolerance)
+            ground_geometry, Vector3D(0, 0, -1), tolerance, angle_tolerance
+        )
         for face in select_faces:
-            if face.can_be_ground and \
-                    isinstance(face.boundary_condition, (Outdoors, Ground)):
+            if face.can_be_ground and isinstance(
+                face.boundary_condition, (Outdoors, Ground)
+            ):
                 face.boundary_condition = boundary_conditions.ground
 
-    def faces_by_guide_surface(self, surface_geometry, directional_vector=None,
-                               tolerance=0.01, angle_tolerance=1.0):
+    def faces_by_guide_surface(
+        self,
+        surface_geometry,
+        directional_vector=None,
+        tolerance=0.01,
+        angle_tolerance=1.0,
+    ):
         """Get the Faces of the Room that are touching and coplanar with a given surface.
 
         This is useful in workflows were one would like to set the properties
@@ -1151,7 +1248,9 @@ class Room(_BaseWithShade):
         if self._geometry is not None:
             self._geometry = self.geometry.scale(factor, origin)
 
-    def remove_colinear_vertices_envelope(self, tolerance=0.01, delete_degenerate=False):
+    def remove_colinear_vertices_envelope(
+        self, tolerance=0.01, delete_degenerate=False
+    ):
         """Remove colinear and duplicate vertices from this object's Faces and Sub-faces.
 
         If degenerate geometry is found in the process of removing colinear vertices,
@@ -1188,10 +1287,13 @@ class Room(_BaseWithShade):
             except ValueError as e:
                 raise ValueError(
                     'Room "{}" contains invalid geometry.\n  {}'.format(
-                        self.full_id, str(e).replace('\n', '\n  ')))
+                        self.full_id, str(e).replace("\n", "\n  ")
+                    )
+                )
         if self._geometry is not None:
             self._geometry = Polyface3D.from_faces(
-                tuple(face.geometry for face in self._faces), tolerance)
+                tuple(face.geometry for face in self._faces), tolerance
+            )
 
     def clean_envelope(self, adjacency_dict, tolerance=0.01):
         """Remove colinear and duplicate vertices from this object's Faces and Sub-faces.
@@ -1244,7 +1346,8 @@ class Room(_BaseWithShade):
         self._faces = tuple(new_faces)
         if self._geometry is not None:
             self._geometry = Polyface3D.from_faces(
-                tuple(face.geometry for face in self._faces), tolerance)
+                tuple(face.geometry for face in self._faces), tolerance
+            )
         return adj_dict
 
     def split_through_holes(self, tolerance=0.01, angle_tolerance=1):
@@ -1299,17 +1402,20 @@ class Room(_BaseWithShade):
             if len(int_faces) == 1:  # just use the old Face object
                 all_faces.append(face)
             else:  # make new Face objects
-                new_bc = face.boundary_condition \
-                    if not isinstance(face.boundary_condition, Surface) \
+                new_bc = (
+                    face.boundary_condition
+                    if not isinstance(face.boundary_condition, Surface)
                     else boundary_conditions.outdoors
+                )
                 new_aps = [ap.duplicate() for ap in face.apertures]
                 new_drs = [dr.duplicate() for dr in face.doors]
                 for x, nf_geo in enumerate(int_faces):
-                    new_id = '{}_{}'.format(face.identifier, x)
+                    new_id = "{}_{}".format(face.identifier, x)
                     new_face = Face(new_id, nf_geo, face.type, new_bc)
                     new_face._display_name = face._display_name
-                    new_face._user_data = None if face.user_data is None \
-                        else face.user_data.copy()
+                    new_face._user_data = (
+                        None if face.user_data is None else face.user_data.copy()
+                    )
                     for ap in new_aps:
                         if nf_geo.is_sub_face(ap.geometry, tolerance, ang_tol):
                             new_face.add_aperture(ap)
@@ -1327,7 +1433,8 @@ class Room(_BaseWithShade):
 
         # make a new polyface from the updated faces
         room_polyface = Polyface3D.from_faces(
-            tuple(face.geometry for face in all_faces), tolerance)
+            tuple(face.geometry for face in all_faces), tolerance
+        )
         if not room_polyface.is_solid:
             room_polyface = room_polyface.merge_overlapping_edges(tolerance, ang_tol)
         # replace honeybee face geometry with versions that are facing outwards
@@ -1361,10 +1468,20 @@ class Room(_BaseWithShade):
         Returns:
             True if geometrically equivalent. False if not geometrically equivalent.
         """
-        met_1 = (self.display_name, self.multiplier, self.zone, self.story,
-                 self.exclude_floor_area)
-        met_2 = (room.display_name, room.multiplier, room.zone, room.story,
-                 room.exclude_floor_area)
+        met_1 = (
+            self.display_name,
+            self.multiplier,
+            self.zone,
+            self.story,
+            self.exclude_floor_area,
+        )
+        met_2 = (
+            room.display_name,
+            room.multiplier,
+            room.zone,
+            room.story,
+            room.exclude_floor_area,
+        )
         if met_1 != met_2:
             return False
         if len(self._faces) != len(room._faces):
@@ -1376,8 +1493,9 @@ class Room(_BaseWithShade):
             return False
         return True
 
-    def check_solid(self, tolerance=0.01, angle_tolerance=1, raise_exception=True,
-                    detailed=False):
+    def check_solid(
+        self, tolerance=0.01, angle_tolerance=1, raise_exception=True, detailed=False
+    ):
         """Check whether the Room is a closed solid to within the input tolerances.
 
         Args:
@@ -1396,30 +1514,41 @@ class Room(_BaseWithShade):
             A string with the message or a list with a dictionary if detailed is True.
         """
         if self._geometry is not None and self.geometry.is_solid:
-            return [] if detailed else ''
+            return [] if detailed else ""
         face_geometries = tuple(face.geometry for face in self._faces)
         self._geometry = Polyface3D.from_faces(face_geometries, tolerance)
         if self.geometry.is_solid:
-            return [] if detailed else ''
+            return [] if detailed else ""
         ang_tol = math.radians(angle_tolerance)
         self._geometry = self.geometry.merge_overlapping_edges(tolerance, ang_tol)
         if self.geometry.is_solid:
-            return [] if detailed else ''
-        msg = 'Room "{}" is not closed to within {} tolerance and {} angle ' \
-            'tolerance.\n  {} naked edges found\n  {} non-manifold edges found'.format(
-                self.full_id, tolerance, angle_tolerance,
-                len(self._geometry.naked_edges), len(self._geometry.non_manifold_edges))
+            return [] if detailed else ""
+        msg = (
+            'Room "{}" is not closed to within {} tolerance and {} angle '
+            "tolerance.\n  {} naked edges found\n  {} non-manifold edges found".format(
+                self.full_id,
+                tolerance,
+                angle_tolerance,
+                len(self._geometry.naked_edges),
+                len(self._geometry.non_manifold_edges),
+            )
+        )
         full_msg = self._validation_message(
-            msg, raise_exception, detailed, '000106',
-            error_type='Non-Solid Room Geometry')
+            msg,
+            raise_exception,
+            detailed,
+            "000106",
+            error_type="Non-Solid Room Geometry",
+        )
         if detailed:  # add the naked and non-manifold edges to helper_geometry
             help_edges = [ln.to_dict() for ln in self.geometry.naked_edges]
             help_edges.extend([ln.to_dict() for ln in self.geometry.non_manifold_edges])
-            full_msg[0]['helper_geometry'] = help_edges
+            full_msg[0]["helper_geometry"] = help_edges
         return full_msg
 
-    def check_sub_faces_valid(self, tolerance=0.01, angle_tolerance=1,
-                              raise_exception=True, detailed=False):
+    def check_sub_faces_valid(
+        self, tolerance=0.01, angle_tolerance=1, raise_exception=True, detailed=False
+    ):
         """Check that room's sub-faces are co-planar with faces and in the face boundary.
 
         Note this does not check the planarity of the sub-faces themselves, whether
@@ -1446,20 +1575,24 @@ class Room(_BaseWithShade):
             msg = f.check_sub_faces_valid(tolerance, angle_tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if len(msgs) == 0:
-            return [] if detailed else ''
+            return [] if detailed else ""
         elif detailed:
             return msgs
-        full_msg = 'Room "{}" contains invalid sub-faces (Apertures and Doors).' \
-            '\n  {}'.format(self.full_id, '\n  '.join(msgs))
+        full_msg = (
+            'Room "{}" contains invalid sub-faces (Apertures and Doors).\n  {}'.format(
+                self.full_id, "\n  ".join(msgs)
+            )
+        )
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
     def check_sub_faces_overlapping(
-            self, tolerance=0.01, raise_exception=True, detailed=False):
+        self, tolerance=0.01, raise_exception=True, detailed=False
+    ):
         """Check that this Room's sub-faces do not overlap with one another.
 
         Args:
@@ -1480,20 +1613,22 @@ class Room(_BaseWithShade):
             msg = f.check_sub_faces_overlapping(tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if len(msgs) == 0:
-            return [] if detailed else ''
+            return [] if detailed else ""
         elif detailed:
             return msgs
-        full_msg = 'Room "{}" contains overlapping sub-faces.' \
-            '\n  {}'.format(self.full_id, '\n  '.join(msgs))
+        full_msg = 'Room "{}" contains overlapping sub-faces.\n  {}'.format(
+            self.full_id, "\n  ".join(msgs)
+        )
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
     def check_upside_down_faces(
-            self, angle_tolerance=1, raise_exception=True, detailed=False):
+        self, angle_tolerance=1, raise_exception=True, detailed=False
+    ):
         """Check whether the Room's Faces have the correct direction for the face type.
 
         This method will only report Floors that are pointing upwards or RoofCeilings
@@ -1520,14 +1655,15 @@ class Room(_BaseWithShade):
             msg = f.check_upside_down(angle_tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if len(msgs) == 0:
-            return [] if detailed else ''
+            return [] if detailed else ""
         elif detailed:
             return msgs
-        full_msg = 'Room "{}" contains upside down Faces.' \
-            '\n  {}'.format(self.full_id, '\n  '.join(msgs))
+        full_msg = 'Room "{}" contains upside down Faces.\n  {}'.format(
+            self.full_id, "\n  ".join(msgs)
+        )
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -1562,17 +1698,19 @@ class Room(_BaseWithShade):
                 msgs.append(dr._check_planar_shades(tolerance, detailed))
         full_msgs = [msg for msg in msgs if msg]
         if len(full_msgs) == 0:
-            return [] if detailed else ''
+            return [] if detailed else ""
         elif detailed:
             return [m for megs in full_msgs for m in megs]
-        full_msg = 'Room "{}" contains non-planar geometry.' \
-            '\n  {}'.format(self.full_id, '\n  '.join(full_msgs))
+        full_msg = 'Room "{}" contains non-planar geometry.\n  {}'.format(
+            self.full_id, "\n  ".join(full_msgs)
+        )
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
-    def check_self_intersecting(self, tolerance=0.01, raise_exception=True,
-                                detailed=False):
+    def check_self_intersecting(
+        self, tolerance=0.01, raise_exception=True, detailed=False
+    ):
         """Check that no edges of the Room's geometry components self-intersect.
 
         This includes all of the Room's Faces, Apertures, Doors and Shades.
@@ -1602,11 +1740,12 @@ class Room(_BaseWithShade):
                 msgs.append(dr._check_self_intersecting_shades(tolerance, detailed))
         full_msgs = [msg for msg in msgs if msg]
         if len(full_msgs) == 0:
-            return [] if detailed else ''
+            return [] if detailed else ""
         elif detailed:
             return [m for megs in full_msgs for m in megs]
-        full_msg = 'Room "{}" contains self-intersecting geometry.' \
-            '\n  {}'.format(self.full_id, '\n  '.join(full_msgs))
+        full_msg = 'Room "{}" contains self-intersecting geometry.\n  {}'.format(
+            self.full_id, "\n  ".join(full_msgs)
+        )
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -1636,27 +1775,35 @@ class Room(_BaseWithShade):
                 if raise_exception:
                     raise ValueError(e)
                 if detailed:
-                    deg_msg = [{
-                        'type': 'ValidationError',
-                        'code': '000107',
-                        'error_type': 'Degenerate Room Volume',
-                        'extension_type': 'Core',
-                        'element_type': 'Room',
-                        'element_id': [self.identifier],
-                        'element_name': [self.display_name],
-                        'message': deg_msg
-                    }]
+                    deg_msg = [
+                        {
+                            "type": "ValidationError",
+                            "code": "000107",
+                            "error_type": "Degenerate Room Volume",
+                            "extension_type": "Core",
+                            "element_type": "Room",
+                            "element_id": [self.identifier],
+                            "element_name": [self.display_name],
+                            "message": deg_msg,
+                        }
+                    ]
                 return deg_msg
-            return [] if detailed else ''
+            return [] if detailed else ""
         #  otherwise, report the room as invalid
         msg = 'Room "{}" is degenerate with zero volume. It should be deleted'.format(
-                self.full_id)
+            self.full_id
+        )
         return self._validation_message(
-            msg, raise_exception, detailed, '000107',
-            error_type='Degenerate Room Volume')
+            msg,
+            raise_exception,
+            detailed,
+            "000107",
+            error_type="Degenerate Room Volume",
+        )
 
     def merge_coplanar_faces(
-            self, tolerance=0.01, angle_tolerance=1, orthogonal_only=False):
+        self, tolerance=0.01, angle_tolerance=1, orthogonal_only=False
+    ):
         """Merge coplanar Faces of this Room.
 
         This is often useful before running Room.intersect_adjacency between
@@ -1735,11 +1882,16 @@ class Room(_BaseWithShade):
                         in_shades.extend(f._indoor_shades)
                         out_shades.extend(f._outdoor_shades)
                     for i, new_geo in enumerate(joined_geos):
-                        fid = prop_f.identifier if i == 0 else \
-                            '{}_{}'.format(prop_f.identifier, i)
-                        fbc = prop_f.boundary_condition if not \
-                            isinstance(prop_f.boundary_condition, Surface) \
+                        fid = (
+                            prop_f.identifier
+                            if i == 0
+                            else "{}_{}".format(prop_f.identifier, i)
+                        )
+                        fbc = (
+                            prop_f.boundary_condition
+                            if not isinstance(prop_f.boundary_condition, Surface)
                             else boundary_conditions.outdoors
+                        )
                         nf = Face(fid, new_geo, prop_f.type, fbc)
                         for ap in apertures:
                             if nf.geometry.is_sub_face(ap.geometry, tol, a_tol):
@@ -1760,7 +1912,8 @@ class Room(_BaseWithShade):
 
         # make a new polyface from the updated faces
         room_polyface = Polyface3D.from_faces(
-            tuple(face.geometry for face in all_faces), tolerance)
+            tuple(face.geometry for face in all_faces), tolerance
+        )
         if not room_polyface.is_solid:
             room_polyface = room_polyface.merge_overlapping_edges(tolerance, a_tol)
         # replace honeybee face geometry with versions that are facing outwards
@@ -1813,15 +1966,18 @@ class Room(_BaseWithShade):
         # loop through the polyface geometries and intersect this room's geometry
         ang_tol = math.radians(angle_tolerance)
         for s_geo in geometry:
-            if isinstance(s_geo, Polyface3D) and not \
-                    Polyface3D.overlapping_bounding_boxes(
-                        self.geometry, s_geo, tolerance):
+            if isinstance(
+                s_geo, Polyface3D
+            ) and not Polyface3D.overlapping_bounding_boxes(
+                self.geometry, s_geo, tolerance
+            ):
                 continue  # no overlap in bounding box; intersection impossible
             s_geos = s_geo.faces if isinstance(s_geo, Polyface3D) else [s_geo]
             for face_1 in self.faces:
                 for face_2 in s_geos:
                     if not face_1.geometry.plane.is_coplanar_tolerance(
-                            face_2.plane, tolerance, ang_tol):
+                        face_2.plane, tolerance, ang_tol
+                    ):
                         continue  # not coplanar; intersection impossible
                     if face_1.geometry.is_centered_adjacent(face_2, tolerance):
                         tol_area = math.sqrt(face_1.geometry.area) * tolerance
@@ -1830,7 +1986,8 @@ class Room(_BaseWithShade):
                     new_geo = []
                     for f_geo in geo_dict[face_1.identifier]:
                         f_split, _ = Face3D.coplanar_split(
-                            f_geo, face_2, tolerance, ang_tol)
+                            f_geo, face_2, tolerance, ang_tol
+                        )
                         for sp_g in f_split:
                             try:
                                 sp_g = sp_g.remove_colinear_vertices(tolerance)
@@ -1846,17 +2003,20 @@ class Room(_BaseWithShade):
             if len(int_faces) == 1:  # just use the old Face object
                 all_faces.append(face)
             else:  # make new Face objects
-                new_bc = face.boundary_condition \
-                    if not isinstance(face.boundary_condition, Surface) \
+                new_bc = (
+                    face.boundary_condition
+                    if not isinstance(face.boundary_condition, Surface)
                     else boundary_conditions.outdoors
+                )
                 new_aps = [ap.duplicate() for ap in face.apertures]
                 new_drs = [dr.duplicate() for dr in face.doors]
                 for x, nf_geo in enumerate(int_faces):
-                    new_id = '{}_{}'.format(face.identifier, x)
+                    new_id = "{}_{}".format(face.identifier, x)
                     new_face = Face(new_id, nf_geo, face.type, new_bc)
                     new_face._display_name = face._display_name
-                    new_face._user_data = None if face.user_data is None \
-                        else face.user_data.copy()
+                    new_face._user_data = (
+                        None if face.user_data is None else face.user_data.copy()
+                    )
                     for ap in new_aps:
                         if nf_geo.is_sub_face(ap.geometry, tolerance, ang_tol):
                             new_face.add_aperture(ap)
@@ -1874,7 +2034,8 @@ class Room(_BaseWithShade):
 
         # make a new polyface from the updated faces
         room_polyface = Polyface3D.from_faces(
-            tuple(face.geometry for face in all_faces), tolerance)
+            tuple(face.geometry for face in all_faces), tolerance
+        )
         if not room_polyface.is_solid:
             room_polyface = room_polyface.merge_overlapping_edges(tolerance, ang_tol)
         # replace honeybee face geometry with versions that are facing outwards
@@ -1895,7 +2056,7 @@ class Room(_BaseWithShade):
         return new_faces
 
     @staticmethod
-    def intersect_adjacency(rooms, tolerance=0.01, angle_tolerance=1):
+    def intersect_adjacency(rooms, tolerance=0.01, angle_tolerance=1.0):
         """Intersect the Faces of an array of Rooms to ensure matching adjacencies.
 
         Note that this method may remove Apertures and Doors if they align with
@@ -1923,7 +2084,7 @@ class Room(_BaseWithShade):
         room_geos = [r.geometry for r in rooms]
         # intersect all adjacencies between rooms
         for i, room in enumerate(rooms):
-            other_rooms = room_geos[:i] + room_geos[i + 1:]
+            other_rooms = room_geos[:i] + room_geos[i + 1 :]
             room.coplanar_split(other_rooms, tolerance, angle_tolerance)
 
     @staticmethod
@@ -1958,27 +2119,34 @@ class Room(_BaseWithShade):
                 for Doors paired in the process of solving adjacency.
         """
         # lists of adjacencies to track
-        adj_info = {'adjacent_faces': [], 'adjacent_apertures': [],
-                    'adjacent_doors': []}
+        adj_info = {
+            "adjacent_faces": [],
+            "adjacent_apertures": [],
+            "adjacent_doors": [],
+        }
 
         # solve all adjacencies between rooms
         for i, room_1 in enumerate(rooms):
             try:
-                for room_2 in rooms[i + 1:]:
+                for room_2 in rooms[i + 1 :]:
                     if not Polyface3D.overlapping_bounding_boxes(
-                            room_1.geometry, room_2.geometry, tolerance):
+                        room_1.geometry, room_2.geometry, tolerance
+                    ):
                         continue  # no overlap in bounding box; adjacency impossible
                     for face_1 in room_1._faces:
                         for face_2 in room_2._faces:
                             if not isinstance(face_2.boundary_condition, Surface):
                                 if face_1.geometry.is_centered_adjacent(
-                                        face_2.geometry, tolerance):
+                                    face_2.geometry, tolerance
+                                ):
                                     face_info = face_1.set_adjacency(face_2)
-                                    adj_info['adjacent_faces'].append((face_1, face_2))
-                                    adj_info['adjacent_apertures'].extend(
-                                        face_info['adjacent_apertures'])
-                                    adj_info['adjacent_doors'].extend(
-                                        face_info['adjacent_doors'])
+                                    adj_info["adjacent_faces"].append((face_1, face_2))
+                                    adj_info["adjacent_apertures"].extend(
+                                        face_info["adjacent_apertures"]
+                                    )
+                                    adj_info["adjacent_doors"].extend(
+                                        face_info["adjacent_doors"]
+                                    )
                                     break
             except IndexError:
                 pass  # we have reached the end of the list of rooms
@@ -2005,14 +2173,16 @@ class Room(_BaseWithShade):
         adj_faces = []  # lists of adjacencies to track
         for i, room_1 in enumerate(rooms):
             try:
-                for room_2 in rooms[i + 1:]:
+                for room_2 in rooms[i + 1 :]:
                     if not Polyface3D.overlapping_bounding_boxes(
-                            room_1.geometry, room_2.geometry, tolerance):
+                        room_1.geometry, room_2.geometry, tolerance
+                    ):
                         continue  # no overlap in bounding box; adjacency impossible
                     for face_1 in room_1._faces:
                         for face_2 in room_2._faces:
                             if face_1.geometry.is_centered_adjacent(
-                                    face_2.geometry, tolerance):
+                                face_2.geometry, tolerance
+                            ):
                                 adj_faces.append((face_1, face_2))
                                 break
             except IndexError:
@@ -2136,8 +2306,10 @@ class Room(_BaseWithShade):
             for ori, rm in zip(orientations, grouped_rooms):
                 or_ind = orient_index(ori, angs)
                 p_rooms[or_ind].extend(rm)
-            orientations = ['{} - {}'.format(int(angs[i - 1]), int(angs[i]))
-                            for i in range(group_count)]
+            orientations = [
+                "{} - {}".format(int(angs[i - 1]), int(angs[i]))
+                for i in range(group_count)
+            ]
             grouped_rooms = p_rooms
         return grouped_rooms, core_rooms, orientations
 
@@ -2216,7 +2388,7 @@ class Room(_BaseWithShade):
         # assign the story property to each of the groups
         story_names = []
         for i, room_list in enumerate(new_rooms):
-            story_name = 'Floor{}'.format(i + 1)
+            story_name = "Floor{}".format(i + 1)
             story_names.append(story_name)
             for room in room_list:
                 if room.story is not None:
@@ -2225,8 +2397,9 @@ class Room(_BaseWithShade):
         return story_names
 
     @staticmethod
-    def automatically_zone(rooms, orient_count=None, north_vector=Vector2D(0, 1),
-                           attr_name=None):
+    def automatically_zone(
+        rooms, orient_count=None, north_vector=Vector2D(0, 1), attr_name=None
+    ):
         """Automatically group Rooms with a similar properties into zones.
 
         Relevant properties that are used to group rooms into zones include story,
@@ -2257,28 +2430,33 @@ class Room(_BaseWithShade):
 
         for story_id, story_rooms in story_dict.items():
             # group the rooms by orientation
-            perim_rooms, core_rooms, orientations, = \
-                Room.group_by_orientation(story_rooms, orient_count, north_vector)
+            (
+                perim_rooms,
+                core_rooms,
+                orientations,
+            ) = Room.group_by_orientation(story_rooms, orient_count, north_vector)
             if orient_count == 4:
-                orientations = ['N', 'E', 'S', 'W']
+                orientations = ["N", "E", "S", "W"]
             elif orient_count == 8:
-                orientations = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+                orientations = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
             else:
-                orientations = ['{} deg'.format(orient) for orient in orientations]
-            orientations.append('Core')
+                orientations = ["{} deg".format(orient) for orient in orientations]
+            orientations.append("Core")
             orient_rooms = perim_rooms + [core_rooms]
 
             # assign the zone name to each group
             for orient_id, orient_rooms in zip(orientations, orient_rooms):
                 if attr_name is not None:  # group the rooms by attribute
-                    attr_rooms, attr_vals = Room.group_by_attribute(orient_rooms, attr_name)
+                    attr_rooms, attr_vals = Room.group_by_attribute(
+                        orient_rooms, attr_name
+                    )
                     for atr_val, zone_rooms in zip(attr_vals, attr_rooms):
-                        atr_val = atr_val.split('::')[-1]
-                        zone_id = '{} - {} - {}'.format(story_id, orient_id, atr_val)
+                        atr_val = atr_val.split("::")[-1]
+                        zone_id = "{} - {} - {}".format(story_id, orient_id, atr_val)
                         for room in zone_rooms:
                             room.zone = zone_id
                 else:
-                    zone_id = '{} - {}'.format(story_id, orient_id)
+                    zone_id = "{} - {}".format(story_id, orient_id)
                     for room in orient_rooms:
                         room.zone = zone_id
 
@@ -2310,8 +2488,11 @@ class Room(_BaseWithShade):
         """
         # create Polygon2Ds from the floors of the rooms
         polys = [
-            [(Polygon2D(Point2D(p.x, p.y) for p in flr.vertices), flr.geometry[0].z)
-             for flr in room.floors if flr.geometry.is_horizontal(tolerance)]
+            [
+                (Polygon2D(Point2D(p.x, p.y) for p in flr.vertices), flr.geometry[0].z)
+                for flr in room.floors
+                if flr.geometry.is_horizontal(tolerance)
+            ]
             for room in rooms
         ]
 
@@ -2322,7 +2503,7 @@ class Room(_BaseWithShade):
             if len(polys_1) == 0:
                 continue
             try:
-                for room_2, polys_2 in zip(rooms[i + 1:], polys[i + 1:]):
+                for room_2, polys_2 in zip(rooms[i + 1 :], polys[i + 1 :]):
                     collision_found = False
                     for ply_1, z1 in polys_1:
                         if collision_found:
@@ -2341,26 +2522,34 @@ class Room(_BaseWithShade):
             # of colliding rooms were found, create error messages
             if len(overlap_rooms) != 0:
                 for room_2 in overlap_rooms:
-                    msg = 'Room "{}" has a volume that collides with the volume ' \
+                    msg = (
+                        'Room "{}" has a volume that collides with the volume '
                         'of Room "{}" more than the tolerance ({}).'.format(
-                            room_1.display_name, room_2.display_name, tolerance)
+                            room_1.display_name, room_2.display_name, tolerance
+                        )
+                    )
                     msg = Room._validation_message_child(
-                        msg, room_1, detailed, '000108',
-                        error_type='Colliding Room Volumes')
+                        msg,
+                        room_1,
+                        detailed,
+                        "000108",
+                        error_type="Colliding Room Volumes",
+                    )
                     if detailed:
-                        msg['element_id'].append(room_2.identifier)
-                        msg['element_name'].append(room_2.display_name)
-                        msg['parents'].append(msg['parents'][0])
+                        msg["element_id"].append(room_2.identifier)
+                        msg["element_name"].append(room_2.display_name)
+                        msg["parents"].append(msg["parents"][0])
                     msgs.append(msg)
         # report any errors
         if detailed:
             return msgs
-        full_msg = '\n '.join(msgs)
+        full_msg = "\n ".join(msgs)
         return full_msg
 
     @staticmethod
     def grouped_horizontal_boundary(
-            rooms, min_separation=0, tolerance=0.01, floors_only=True):
+        rooms, min_separation=0, tolerance=0.01, floors_only=True
+    ):
         """Get a list of Face3D for the horizontal boundary around several Rooms.
 
         This method will attempt to produce a boundary that follows along the
@@ -2431,7 +2620,8 @@ class Room(_BaseWithShade):
             closed_polys = Polygon2D.joined_intersected_boundary(floor_polys, tolerance)
         else:  # otherwise, use the more intense and less reliable gap crossing method
             closed_polys = Polygon2D.gap_crossing_boundary(
-                floor_polys, min_separation, tolerance)
+                floor_polys, min_separation, tolerance
+            )
 
         # remove colinear vertices from the resulting polygons
         clean_polys = []
@@ -2456,9 +2646,17 @@ class Room(_BaseWithShade):
 
     @staticmethod
     def rooms_from_rectangle_plan(
-            width, length, floor_to_floor_height, perimeter_offset=0, story_count=1,
-            orientation_angle=0, outdoor_roof=True, ground_floor=True,
-            unique_id=None, tolerance=0.01):
+        width,
+        length,
+        floor_to_floor_height,
+        perimeter_offset=0,
+        story_count=1,
+        orientation_angle=0,
+        outdoor_roof=True,
+        ground_floor=True,
+        unique_id=None,
+        tolerance=0.01,
+    ):
         """Create a Rooms that represent a rectangular floor plan.
 
         Note that the resulting Rooms won't have any windows or solved adjacencies.
@@ -2489,12 +2687,15 @@ class Room(_BaseWithShade):
         """
         footprint = [Face3D.from_rectangle(width, length)]
         if perimeter_offset != 0:  # use the straight skeleton methods
-            assert perimeter_offset > 0, 'perimeter_offset cannot be less than than 0.'
+            assert perimeter_offset > 0, "perimeter_offset cannot be less than than 0."
             try:
                 footprint = []
-                base = Polygon2D.from_rectangle(Point2D(), Vector2D(0, 1), width, length)
+                base = Polygon2D.from_rectangle(
+                    Point2D(), Vector2D(0, 1), width, length
+                )
                 sub_polys_perim, sub_polys_core = perimeter_core_subpolygons(
-                    polygon=base, distance=perimeter_offset, tolerance=tolerance)
+                    polygon=base, distance=perimeter_offset, tolerance=tolerance
+                )
                 for s_poly in sub_polys_perim + sub_polys_core:
                     sub_face = Face3D([Point3D(pt.x, pt.y, 0) for pt in s_poly])
                     footprint.append(sub_face)
@@ -2503,18 +2704,35 @@ class Room(_BaseWithShade):
         # create the honeybee rooms
         if unique_id is None:
             unique_id = str(uuid.uuid4())[:8]  # unique identifier for the rooms
-        rm_ids = ['Room'] if len(footprint) == 1 else ['Front', 'Right', 'Back', 'Left']
+        rm_ids = ["Room"] if len(footprint) == 1 else ["Front", "Right", "Back", "Left"]
         if len(footprint) == 5:
-            rm_ids.append('Core')
+            rm_ids.append("Core")
         return Room.rooms_from_footprint(
-            footprint, floor_to_floor_height, rm_ids, unique_id, orientation_angle,
-            story_count, outdoor_roof, ground_floor)
+            footprint,
+            floor_to_floor_height,
+            rm_ids,
+            unique_id,
+            orientation_angle,
+            story_count,
+            outdoor_roof,
+            ground_floor,
+        )
 
     @staticmethod
     def rooms_from_l_shaped_plan(
-            width_1, length_1, width_2, length_2, floor_to_floor_height,
-            perimeter_offset=0, story_count=1, orientation_angle=0,
-            outdoor_roof=True, ground_floor=True, unique_id=None, tolerance=0.01):
+        width_1,
+        length_1,
+        width_2,
+        length_2,
+        floor_to_floor_height,
+        perimeter_offset=0,
+        story_count=1,
+        orientation_angle=0,
+        outdoor_roof=True,
+        ground_floor=True,
+        unique_id=None,
+        tolerance=0.01,
+    ):
         """Create a Rooms that represent an L-shaped floor plan.
 
         Note that the resulting Rooms in the model won't have any windows or solved
@@ -2549,35 +2767,59 @@ class Room(_BaseWithShade):
         """
         # create the geometry of the rooms for the first floor
         max_x, max_y = width_2 + length_1, width_1 + length_2
-        pts = [(0, 0), (max_x, 0), (max_x, width_1), (width_2, width_1),
-               (width_2, max_y), (0, max_y)]
+        pts = [
+            (0, 0),
+            (max_x, 0),
+            (max_x, width_1),
+            (width_2, width_1),
+            (width_2, max_y),
+            (0, max_y),
+        ]
         footprint = Face3D(tuple(Point3D(*pt) for pt in pts))
         if perimeter_offset != 0:  # use the straight skeleton methods
-            assert perimeter_offset > 0, 'perimeter_offset cannot be less than than 0.'
+            assert perimeter_offset > 0, "perimeter_offset cannot be less than than 0."
             try:
                 footprint = []
                 base = Polygon2D(tuple(Point2D(*pt) for pt in pts))
                 sub_polys_perim, sub_polys_core = perimeter_core_subpolygons(
-                    polygon=base, distance=perimeter_offset, tolerance=tolerance)
+                    polygon=base, distance=perimeter_offset, tolerance=tolerance
+                )
                 for s_poly in sub_polys_perim + sub_polys_core:
                     sub_face = Face3D([Point3D(pt.x, pt.y, 0) for pt in s_poly])
                     footprint.append(sub_face)
             except RuntimeError:
                 pass
         # create the honeybee rooms
-        unique_id = '' if unique_id is None else '_{}'.format(unique_id)
-        rm_ids = ['Room'] if len(footprint) == 1 else \
-            ['LongEdge1', 'End1', 'ShortEdge1', 'ShortEdge2', 'End2', 'LongEdge2']
+        unique_id = "" if unique_id is None else "_{}".format(unique_id)
+        rm_ids = (
+            ["Room"]
+            if len(footprint) == 1
+            else ["LongEdge1", "End1", "ShortEdge1", "ShortEdge2", "End2", "LongEdge2"]
+        )
         if len(footprint) == 7:
-            rm_ids.append('Core')
+            rm_ids.append("Core")
         return Room.rooms_from_footprint(
-            footprint, floor_to_floor_height, rm_ids, unique_id, orientation_angle,
-            story_count, outdoor_roof, ground_floor)
+            footprint,
+            floor_to_floor_height,
+            rm_ids,
+            unique_id,
+            orientation_angle,
+            story_count,
+            outdoor_roof,
+            ground_floor,
+        )
 
     @staticmethod
     def rooms_from_footprint(
-            footprints, floor_to_floor_height, room_ids=None, unique_id=None,
-            orientation_angle=0, story_count=1, outdoor_roof=True, ground_floor=True):
+        footprints,
+        floor_to_floor_height,
+        room_ids=None,
+        unique_id=None,
+        orientation_angle=0,
+        story_count=1,
+        outdoor_roof=True,
+        ground_floor=True,
+    ):
         """Create several Honeybee Rooms from footprint Face3Ds.
 
         Args:
@@ -2599,26 +2841,28 @@ class Room(_BaseWithShade):
         """
         # set default identifiers if not provided
         if room_ids is None:
-            room_ids = ['Room_{}'.format(str(uuid.uuid4())[:8]) for _ in footprints]
+            room_ids = ["Room_{}".format(str(uuid.uuid4())[:8]) for _ in footprints]
         # extrude the footprint into solids
-        first_floor = [Polyface3D.from_offset_face(geo, floor_to_floor_height)
-                       for geo in footprints]
+        first_floor = [
+            Polyface3D.from_offset_face(geo, floor_to_floor_height)
+            for geo in footprints
+        ]
         # rotate the geometries if an orientation angle is specified
         if orientation_angle != 0:
             angle, origin = math.radians(orientation_angle), Point3D()
             first_floor = [geo.rotate_xy(angle, origin) for geo in first_floor]
         # create the initial rooms for the first floor
         rooms = []
-        unique_id = '' if unique_id is None else '_{}'.format(unique_id)
+        unique_id = "" if unique_id is None else "_{}".format(unique_id)
         for polyface, rmid in zip(first_floor, room_ids):
-            rooms.append(Room.from_polyface3d('{}{}'.format(rmid, unique_id), polyface))
+            rooms.append(Room.from_polyface3d("{}{}".format(rmid, unique_id), polyface))
         # if there are multiple stories, duplicate the first floor rooms
         if story_count != 1:
             all_rooms = []
             for i in range(story_count):
                 for room in rooms:
                     new_room = room.duplicate()
-                    new_room.add_prefix('Floor{}'.format(i + 1))
+                    new_room.add_prefix("Floor{}".format(i + 1))
                     m_vec = Vector3D(0, 0, floor_to_floor_height * i)
                     new_room.move(m_vec)
                     all_rooms.append(new_room)
@@ -2628,10 +2872,10 @@ class Room(_BaseWithShade):
             room.display_name = room.identifier[:-9]
         # assign adiabatic boundary conditions if requested
         if not outdoor_roof and ad_bc:
-            for room in rooms[-len(first_floor):]:
+            for room in rooms[-len(first_floor) :]:
                 room[-1].boundary_condition = ad_bc  # make the roof adiabatic
         if not ground_floor and ad_bc:
-            for room in rooms[:len(first_floor)]:
+            for room in rooms[: len(first_floor)]:
                 room[0].boundary_condition = ad_bc  # make the floor adiabatic
         return rooms
 
@@ -2699,9 +2943,12 @@ class Room(_BaseWithShade):
         flr_geo = flr_geo if flr_geo.normal.z >= 0 else flr_geo.flip()
 
         # match the segments of the floor geometry to walls of the Room
-        segs = flr_geo.boundary_segments if flr_geo.holes is None else \
-            flr_geo.boundary_segments + \
-            tuple(seg for hole in flr_geo.hole_segments for seg in hole)
+        segs = (
+            flr_geo.boundary_segments
+            if flr_geo.holes is None
+            else flr_geo.boundary_segments
+            + tuple(seg for hole in flr_geo.hole_segments for seg in hole)
+        )
         wall_bcs = [boundary_conditions.outdoors] * len(segs)
         sub_faces = [None] * len(segs)
         for i, seg in enumerate(segs):
@@ -2715,8 +2962,10 @@ class Room(_BaseWithShade):
                     else:  # angled wall; scale the Y to covert to vertical
                         w_geos = [sf.geometry for sf in sf_objs]
                         w_p = Plane(Vector3D(seg.v.y, -seg.v.x, 0), seg.p, seg.v)
-                        w3d = [Face3D([p.project(w_p.n, w_p.o) for p in geo.boundary])
-                               for geo in w_geos]
+                        w3d = [
+                            Face3D([p.project(w_p.n, w_p.o) for p in geo.boundary])
+                            for geo in w_geos
+                        ]
                         proj_sf_objs = []
                         for proj_geo, sf_obj in zip(w3d, sf_objs):
                             sf_obj._geometry = proj_geo
@@ -2725,15 +2974,26 @@ class Room(_BaseWithShade):
 
         # determine the ceiling height, and top/bottom boundary conditions
         floor_to_ceiling_height = self.volume / flr_geo.area
-        is_ground_contact = all([isinstance(f.boundary_condition, Ground)
-                                 for f in self.faces if isinstance(f.type, Floor)])
-        is_top_exposed = all([isinstance(f.boundary_condition, Outdoors)
-                              for f in self.faces if isinstance(f.type, RoofCeiling)])
+        is_ground_contact = all(
+            [
+                isinstance(f.boundary_condition, Ground)
+                for f in self.faces
+                if isinstance(f.type, Floor)
+            ]
+        )
+        is_top_exposed = all(
+            [
+                isinstance(f.boundary_condition, Outdoors)
+                for f in self.faces
+                if isinstance(f.type, RoofCeiling)
+            ]
+        )
 
         # create the new extruded Room object
         ext_p_face = Polyface3D.from_offset_face(flr_geo, floor_to_ceiling_height)
         ext_room = Room.from_polyface3d(
-            self.identifier, ext_p_face, ground_depth=float('-inf'))
+            self.identifier, ext_p_face, ground_depth=float("-inf")
+        )
 
         # assign BCs and replace any Surface conditions to be set on the story level
         for i, bc in enumerate(wall_bcs):
@@ -2748,20 +3008,24 @@ class Room(_BaseWithShade):
                 ext_f = ext_room[i + 1]
                 if isinstance(ext_f.boundary_condition, Outdoors):
                     ext_f.add_sub_faces(sub_objs)
-                    subs_valid = ext_f.check_sub_faces_valid(
-                        tolerance, angle_tolerance, False) == ''
+                    subs_valid = (
+                        ext_f.check_sub_faces_valid(tolerance, angle_tolerance, False)
+                        == ""
+                    )
                     if not subs_valid:  # convert them to a simple ratio
                         wwr = ext_f.aperture_ratio
                         wwr = 0.99 if wwr > 0.99 else wwr
                         ext_f.apertures_by_ratio(wwr, tolerance)
-                        base_ap = sub_objs[0] \
-                            if isinstance(sub_objs[0], Aperture) else None
+                        base_ap = (
+                            sub_objs[0] if isinstance(sub_objs[0], Aperture) else None
+                        )
                         if base_ap is not None:
                             for ap in ext_f.apertures:
                                 ap._is_operable = base_ap._is_operable
                                 ap._display_name = base_ap._display_name
                                 ap._properties._duplicate_extension_attr(
-                                    base_ap._properties)
+                                    base_ap._properties
+                                )
 
         # assign boundary conditions for the roof and floor
         if is_ground_contact:
@@ -2779,7 +3043,9 @@ class Room(_BaseWithShade):
                     sf_objs = f._apertures + f._doors
                     for sf in sf_objs:
                         new_sf = sf.duplicate()
-                        pts = [Point3D(pt.x, pt.y, rf_ht) for pt in sf.geometry.boundary]
+                        pts = [
+                            Point3D(pt.x, pt.y, rf_ht) for pt in sf.geometry.boundary
+                        ]
                         new_sf._geometry = Face3D(pts)
                         new_sf.remove_shades()
                         skylights.append(new_sf)
@@ -2809,7 +3075,8 @@ class Room(_BaseWithShade):
                 fg = face.geometry
                 try:
                     verts = fg._remove_colinear(
-                        fg._boundary, fg.boundary_polygon2d, tolerance)
+                        fg._boundary, fg.boundary_polygon2d, tolerance
+                    )
                 except AssertionError:
                     return None
                 for v1 in verts:
@@ -2835,23 +3102,24 @@ class Room(_BaseWithShade):
                 X/Y axes of the planes but is not required and can be removed to
                 keep the dictionary smaller. (Default: True).
         """
-        base = {'type': 'Room'}
-        base['identifier'] = self.identifier
-        base['display_name'] = self.display_name
-        base['properties'] = self.properties.to_dict(abridged, included_prop)
-        base['faces'] = [f.to_dict(abridged, included_prop, include_plane)
-                         for f in self._faces]
+        base = {"type": "Room"}
+        base["identifier"] = self.identifier
+        base["display_name"] = self.display_name
+        base["properties"] = self.properties.to_dict(abridged, included_prop)
+        base["faces"] = [
+            f.to_dict(abridged, included_prop, include_plane) for f in self._faces
+        ]
         self._add_shades_to_dict(base, abridged, included_prop, include_plane)
         if self.multiplier != 1:
-            base['multiplier'] = self.multiplier
+            base["multiplier"] = self.multiplier
         if self._zone is not None:
-            base['zone'] = self.zone
+            base["zone"] = self.zone
         if self.story is not None:
-            base['story'] = self.story
+            base["story"] = self.story
         if self.exclude_floor_area:
-            base['exclude_floor_area'] = self.exclude_floor_area
+            base["exclude_floor_area"] = self.exclude_floor_area
         if self.user_data is not None:
-            base['user_data'] = self.user_data
+            base["user_data"] = self.user_data
         return base
 
     def _base_horiz_boundary(self, tolerance=0.01):
@@ -2877,22 +3145,28 @@ class Room(_BaseWithShade):
                 bound = [Point3D(p.x, p.y, floor_height) for p in flr_geo[0].boundary]
                 holes = None
                 if flr_geo[0].has_holes:
-                    holes = [[Point3D(p.x, p.y, floor_height) for p in hole]
-                             for hole in flr_geo[0].holes]
+                    holes = [
+                        [Point3D(p.x, p.y, floor_height) for p in hole]
+                        for hole in flr_geo[0].holes
+                    ]
                 return Face3D(bound, holes=holes)
         else:  # multiple geometries to be joined together
             floor_height = self.geometry.min.z
             horiz_geo = []
             for fg in flr_geo:
-                if fg.is_horizontal(tolerance) and \
-                        abs(floor_height - fg.min.z) <= tolerance:
+                if (
+                    fg.is_horizontal(tolerance)
+                    and abs(floor_height - fg.min.z) <= tolerance
+                ):
                     horiz_geo.append(fg)
                 else:  # project the face geometry into the XY plane
                     bound = [Point3D(p.x, p.y, floor_height) for p in fg.boundary]
                     holes = None
                     if fg.has_holes:
-                        holes = [[Point3D(p.x, p.y, floor_height) for p in hole]
-                                 for hole in fg.holes]
+                        holes = [
+                            [Point3D(p.x, p.y, floor_height) for p in hole]
+                            for hole in fg.holes
+                        ]
                     horiz_geo.append(Face3D(bound, holes=holes))
             # sense if there are overlapping geometries to be boolean unioned
             overlap_groups = Face3D.group_by_coplanar_overlap(horiz_geo, tolerance)
@@ -2927,7 +3201,8 @@ class Room(_BaseWithShade):
         """
         # get 2D vertices for all of the walls
         wall_st_pts = [
-            f.geometry.lower_left_counter_clockwise_vertices[0] for f in self.walls]
+            f.geometry.lower_left_counter_clockwise_vertices[0] for f in self.walls
+        ]
         wall_st_pts_2d = [Point2D(v[0], v[1]) for v in wall_st_pts]
         # insert the wall points into each of the faces
         wall_faces = []
@@ -2953,7 +3228,9 @@ class Room(_BaseWithShade):
                             index_min = min(range(len(values)), key=values.__getitem__)
                             polygon_update.append((index_min, pt))
                 if polygon_update:
-                    end_poly = Polygon2D._insert_updates_in_order(st_poly, polygon_update)
+                    end_poly = Polygon2D._insert_updates_in_order(
+                        st_poly, polygon_update
+                    )
                     wall_polys.append(end_poly)
                 else:
                     wall_polys.append(st_poly)
@@ -2995,15 +3272,21 @@ class Room(_BaseWithShade):
                     # find any rooms that are adjacent to the adjacent rooms
                     for obj in adj_objs:
                         all_new_ids = adj_finding_function(obj)
-                        new_ids = [rid for rid in all_new_ids
-                                   if rid not in local_ids and rid != first_id]
+                        new_ids = [
+                            rid
+                            for rid in all_new_ids
+                            if rid not in local_ids and rid != first_id
+                        ]
                         for rm_id in new_ids:
                             local_ids.add(rm_id)
                         adj_ids.extend(new_ids)
                 # after the local network is understood, clean up duplicated rooms
                 adj_network.append(local_network)
-                i_to_remove = [i for i, room_obj in enumerate(all_rooms)
-                               if room_obj.identifier in local_ids]
+                i_to_remove = [
+                    i
+                    for i, room_obj in enumerate(all_rooms)
+                    if room_obj.identifier in local_ids
+                ]
                 for i in reversed(i_to_remove):
                     all_rooms.pop(i)
         return adj_network
@@ -3022,8 +3305,9 @@ class Room(_BaseWithShade):
         """Find the identifiers of all rooms with air boundary adjacency to a room."""
         adj_rooms = []
         for face in room._faces:
-            if isinstance(face.type, AirBoundary) and \
-                    isinstance(face.boundary_condition, Surface):
+            if isinstance(face.type, AirBoundary) and isinstance(
+                face.boundary_condition, Surface
+            ):
                 adj_rooms.append(face.boundary_condition.boundary_condition_objects[-1])
         return adj_rooms
 
@@ -3050,4 +3334,4 @@ class Room(_BaseWithShade):
         return iter(self._faces)
 
     def __repr__(self):
-        return 'Room: %s' % self.display_name
+        return "Room: %s" % self.display_name

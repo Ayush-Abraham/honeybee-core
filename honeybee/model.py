@@ -1,5 +1,6 @@
 # coding: utf-8
 """Honeybee Model."""
+
 from __future__ import division
 import os
 import sys
@@ -8,6 +9,7 @@ import re
 import json
 import math
 import uuid
+
 try:  # check if we are in IronPython
     import cPickle as pickle
 except ImportError:  # wea are in cPython
@@ -26,15 +28,20 @@ from .shade import Shade
 from .aperture import Aperture
 from .door import Door
 from .shademesh import ShadeMesh
-from .typing import float_positive, invalid_dict_error, clean_string, \
-    clean_and_number_string
+from .typing import (
+    float_positive,
+    invalid_dict_error,
+    clean_string,
+    clean_and_number_string,
+)
 from .config import folders
 from .boundarycondition import Outdoors, Surface
 from .facetype import AirBoundary, Wall, Floor, RoofCeiling, face_types
 import honeybee.writer.model as writer
 from honeybee.boundarycondition import boundary_conditions as bcs
+
 try:
-    ad_bc = bcs.adiabatic
+    ad_bc = bcs.adiabatic  # type: ignore
 except AttributeError:  # honeybee_energy is not loaded and adiabatic does not exist
     ad_bc = None
 
@@ -109,18 +116,35 @@ class Model(_Base):
         * top_level_dict
         * user_data
     """
+
     __slots__ = (
-        '_rooms', '_orphaned_faces', '_orphaned_apertures', '_orphaned_doors',
-        '_orphaned_shades', '_shade_meshes',
-        '_units', '_tolerance', '_angle_tolerance'
+        "_rooms",
+        "_orphaned_faces",
+        "_orphaned_apertures",
+        "_orphaned_doors",
+        "_orphaned_shades",
+        "_shade_meshes",
+        "_units",
+        "_tolerance",
+        "_angle_tolerance",
     )
 
     UNITS = UNITS
     UNITS_TOLERANCES = UNITS_TOLERANCES
 
-    def __init__(self, identifier, rooms=None, orphaned_faces=None, orphaned_shades=None,
-                 orphaned_apertures=None, orphaned_doors=None, shade_meshes=None,
-                 units='Meters', tolerance=None, angle_tolerance=1.0):
+    def __init__(
+        self,
+        identifier,
+        rooms=None,
+        orphaned_faces=None,
+        orphaned_shades=None,
+        orphaned_apertures=None,
+        orphaned_doors=None,
+        shade_meshes=None,
+        units="Meters",
+        tolerance=None,
+        angle_tolerance=1.0,
+    ):
         """A collection of Rooms, Faces, Apertures, and Doors for an entire model."""
         _Base.__init__(self, identifier)  # process the identifier
 
@@ -156,69 +180,77 @@ class Model(_Base):
         self._properties = ModelProperties(self)
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict) -> "Model":
         """Initialize a Model from a dictionary.
 
         Args:
             data: A dictionary representation of a Model object.
         """
         # check the type of dictionary
-        assert data['type'] == 'Model', 'Expected Model dictionary. ' \
-            'Got {}.'.format(data['type'])
+        assert data["type"] == "Model", "Expected Model dictionary. Got {}.".format(
+            data["type"]
+        )
 
         # import the units and tolerance values
-        units = 'Meters' if 'units' not in data or data['units'] is None \
-            else data['units']
-        tol = cls.UNITS_TOLERANCES[units] if 'tolerance' not in data or \
-            data['tolerance'] is None else data['tolerance']
-        angle_tol = 1.0 if 'angle_tolerance' not in data or \
-            data['angle_tolerance'] is None else data['angle_tolerance']
+        units = (
+            "Meters" if "units" not in data or data["units"] is None else data["units"]
+        )
+        tol = (
+            cls.UNITS_TOLERANCES[units]
+            if "tolerance" not in data or data["tolerance"] is None
+            else data["tolerance"]
+        )
+        angle_tol = (
+            1.0
+            if "angle_tolerance" not in data or data["angle_tolerance"] is None
+            else data["angle_tolerance"]
+        )
 
         # import all of the geometry
         rooms = None  # import rooms
-        if 'rooms' in data and data['rooms'] is not None:
+        if "rooms" in data and data["rooms"] is not None:
             rooms = []
-            for r in data['rooms']:
+            for r in data["rooms"]:
                 try:
                     rooms.append(Room.from_dict(r, tol, angle_tol))
                 except Exception as e:
                     invalid_dict_error(r, e)
         orphaned_faces = None  # import orphaned faces
-        if 'orphaned_faces' in data and data['orphaned_faces'] is not None:
+        if "orphaned_faces" in data and data["orphaned_faces"] is not None:
             orphaned_faces = []
-            for f in data['orphaned_faces']:
+            for f in data["orphaned_faces"]:
                 try:
                     orphaned_faces.append(Face.from_dict(f))
                 except Exception as e:
                     invalid_dict_error(f, e)
         orphaned_apertures = None  # import orphaned apertures
-        if 'orphaned_apertures' in data and data['orphaned_apertures'] is not None:
+        if "orphaned_apertures" in data and data["orphaned_apertures"] is not None:
             orphaned_apertures = []
-            for a in data['orphaned_apertures']:
+            for a in data["orphaned_apertures"]:
                 try:
                     orphaned_apertures.append(Aperture.from_dict(a))
                 except Exception as e:
                     invalid_dict_error(a, e)
         orphaned_doors = None  # import orphaned doors
-        if 'orphaned_doors' in data and data['orphaned_doors'] is not None:
+        if "orphaned_doors" in data and data["orphaned_doors"] is not None:
             orphaned_doors = []
-            for d in data['orphaned_doors']:
+            for d in data["orphaned_doors"]:
                 try:
                     orphaned_doors.append(Door.from_dict(d))
                 except Exception as e:
                     invalid_dict_error(d, e)
         orphaned_shades = None  # import orphaned shades
-        if 'orphaned_shades' in data and data['orphaned_shades'] is not None:
+        if "orphaned_shades" in data and data["orphaned_shades"] is not None:
             orphaned_shades = []
-            for s in data['orphaned_shades']:
+            for s in data["orphaned_shades"]:
                 try:
                     orphaned_shades.append(Shade.from_dict(s))
                 except Exception as e:
                     invalid_dict_error(s, e)
         shade_meshes = None  # import shade meshes
-        if 'shade_meshes' in data and data['shade_meshes'] is not None:
+        if "shade_meshes" in data and data["shade_meshes"] is not None:
             shade_meshes = []
-            for sm in data['shade_meshes']:
+            for sm in data["shade_meshes"]:
                 try:
                     shade_meshes.append(ShadeMesh.from_dict(sm))
                 except Exception as e:
@@ -226,13 +258,21 @@ class Model(_Base):
 
         # build the model object
         model = Model(
-            data['identifier'], rooms, orphaned_faces, orphaned_shades,
-            orphaned_apertures, orphaned_doors, shade_meshes,
-            units, tol, angle_tol)
-        if 'display_name' in data and data['display_name'] is not None:
-            model.display_name = data['display_name']
-        if 'user_data' in data and data['user_data'] is not None:
-            model.user_data = data['user_data']
+            data["identifier"],
+            rooms,
+            orphaned_faces,
+            orphaned_shades,
+            orphaned_apertures,
+            orphaned_doors,
+            shade_meshes,
+            units,
+            tol,
+            angle_tol,
+        )
+        if "display_name" in data and data["display_name"] is not None:
+            model.display_name = data["display_name"]
+        if "user_data" in data and data["user_data"] is not None:
+            model.user_data = data["user_data"]
 
         # assign extension properties to the model
         model.properties.apply_properties_from_dict(data)
@@ -247,28 +287,28 @@ class Model(_Base):
         """
         # sense the file type from the first character to avoid maxing memory with JSON
         # this is needed since queenbee overwrites all file extensions
-        with io.open(hb_file, encoding='utf-8') as inf:
+        with io.open(hb_file, encoding="utf-8") as inf:
             first_char = inf.read(1)
             second_char = inf.read(1)
-        is_json = True if first_char == '{' or second_char == '{' else False
+        is_json = True if first_char == "{" or second_char == "{" else False
         # load the file using either HBJSON pathway or HBpkl
         if is_json:
             return cls.from_hbjson(hb_file)
         return cls.from_hbpkl(hb_file)
 
     @classmethod
-    def from_hbjson(cls, hbjson_file):
+    def from_hbjson(cls, hbjson_file: str):
         """Initialize a Model from a HBJSON file.
 
         Args:
             hbjson_file: Path to HBJSON file.
         """
-        assert os.path.isfile(hbjson_file), 'Failed to find %s' % hbjson_file
-        with io.open(hbjson_file, encoding='utf-8') as inf:
+        assert os.path.isfile(hbjson_file), "Failed to find %s" % hbjson_file
+        with io.open(hbjson_file, encoding="utf-8") as inf:
             inf.read(1)
             second_char = inf.read(1)
-        with io.open(hbjson_file, encoding='utf-8') as inf:
-            if second_char == '{':
+        with io.open(hbjson_file, encoding="utf-8") as inf:
+            if second_char == "{":
                 inf.read(1)
             data = json.load(inf)
         return cls.from_dict(data)
@@ -280,14 +320,20 @@ class Model(_Base):
         Args:
             hbpkl_file: Path to HBpkl file.
         """
-        assert os.path.isfile(hbpkl_file), 'Failed to find %s' % hbpkl_file
-        with open(hbpkl_file, 'rb') as inf:
+        assert os.path.isfile(hbpkl_file), "Failed to find %s" % hbpkl_file
+        with open(hbpkl_file, "rb") as inf:
             data = pickle.load(inf)
         return cls.from_dict(data)
 
     @classmethod
-    def from_stl(cls, file_path, geometry_to_faces=False, units='Meters',
-                 tolerance=None, angle_tolerance=1.0):
+    def from_stl(
+        cls,
+        file_path,
+        geometry_to_faces=False,
+        units="Meters",
+        tolerance=None,
+        angle_tolerance=1.0,
+    ):
         """Create a Honeybee Model from an STL file.
 
         Args:
@@ -323,14 +369,24 @@ class Model(_Base):
         if geometry_to_faces:
             for verts, normal in zip(stl_obj.face_vertices, stl_obj.face_normals):
                 all_geo.append(Face3D(verts, plane=Plane(normal, verts[0])))
-            hb_objs = [Face(all_id + '_' + str(uuid.uuid4())[:8], go) for go in all_geo]
-            return Model(all_id, orphaned_faces=hb_objs, units=units,
-                         tolerance=tolerance, angle_tolerance=angle_tolerance)
+            hb_objs = [Face(all_id + "_" + str(uuid.uuid4())[:8], go) for go in all_geo]
+            return Model(
+                all_id,
+                orphaned_faces=hb_objs,
+                units=units,
+                tolerance=tolerance,
+                angle_tolerance=angle_tolerance,
+            )
         else:
             mesh3d = Mesh3D.from_face_vertices(stl_obj.face_vertices)
             hb_objs = [ShadeMesh(all_id, mesh3d)]
-            return Model(all_id, shade_meshes=hb_objs, units=units,
-                         tolerance=tolerance, angle_tolerance=angle_tolerance)
+            return Model(
+                all_id,
+                shade_meshes=hb_objs,
+                units=units,
+                tolerance=tolerance,
+                angle_tolerance=angle_tolerance,
+            )
 
     @classmethod
     def from_sync(cls, base_model, other_model, sync_instructions):
@@ -360,52 +416,63 @@ class Model(_Base):
         exist_dict = base_model.top_level_dict
         other_dict = other_model.top_level_dict
         add_dict = {
-            'Room': [], 'Face': [], 'Aperture': [], 'Door': [],
-            'Shade': [], 'ShadeMesh': []
+            "Room": [],
+            "Face": [],
+            "Aperture": [],
+            "Door": [],
+            "Shade": [],
+            "ShadeMesh": [],
         }
         del_dict = {
-            'Room': [], 'Face': [], 'Aperture': [], 'Door': [],
-            'Shade': [], 'ShadeMesh': []
+            "Room": [],
+            "Face": [],
+            "Aperture": [],
+            "Door": [],
+            "Shade": [],
+            "ShadeMesh": [],
         }
         # loop through the changed objects and record changes
-        if 'changed_objects' in sync_instructions:
-            for change in sync_instructions['changed_objects']:
-                ex_obj = exist_dict[change['element_id']]
-                up_obj = other_dict[change['element_id']]
-                base_obj = up_obj if 'update_geometry' in change \
-                    and change['update_geometry'] else ex_obj
+        if "changed_objects" in sync_instructions:
+            for change in sync_instructions["changed_objects"]:
+                ex_obj = exist_dict[change["element_id"]]
+                up_obj = other_dict[change["element_id"]]
+                base_obj = (
+                    up_obj
+                    if "update_geometry" in change and change["update_geometry"]
+                    else ex_obj
+                )
                 base_obj.properties._update_by_sync(
-                    change, ex_obj.properties, up_obj.properties)
-                del_dict[change['element_type']].append(change['element_id'])
-                add_dict[change['element_type']].append(base_obj)
+                    change, ex_obj.properties, up_obj.properties
+                )
+                del_dict[change["element_type"]].append(change["element_id"])
+                add_dict[change["element_type"]].append(base_obj)
         # loop through deleted objects and record changes
-        if 'deleted_objects' in sync_instructions:
-            for change in sync_instructions['deleted_objects']:
-                del_dict[change['element_type']].append(change['element_id'])
+        if "deleted_objects" in sync_instructions:
+            for change in sync_instructions["deleted_objects"]:
+                del_dict[change["element_type"]].append(change["element_id"])
         # loop through added objects and record changes
-        if 'added_objects' in sync_instructions:
-            for change in sync_instructions['added_objects']:
-                up_obj = other_dict[change['element_id']]
-                add_dict[change['element_type']].append(up_obj)
+        if "added_objects" in sync_instructions:
+            for change in sync_instructions["added_objects"]:
+                up_obj = other_dict[change["element_id"]]
+                add_dict[change["element_type"]].append(up_obj)
         # duplicate the base model and make changes to it
         new_model = base_model.duplicate()
-        new_model.remove_rooms(del_dict['Room'])
-        new_model.remove_faces(del_dict['Face'])
-        new_model.remove_apertures(del_dict['Aperture'])
-        new_model.remove_doors(del_dict['Door'])
-        new_model.remove_shades(del_dict['Shade'])
-        new_model.remove_shade_meshes(del_dict['ShadeMesh'])
-        new_model.add_rooms(add_dict['Room'])
-        new_model.add_faces(add_dict['Face'])
-        new_model.add_apertures(add_dict['Aperture'])
-        new_model.add_doors(add_dict['Door'])
-        new_model.add_shades(add_dict['Shade'])
-        new_model.add_shade_meshes(add_dict['ShadeMesh'])
+        new_model.remove_rooms(del_dict["Room"])
+        new_model.remove_faces(del_dict["Face"])
+        new_model.remove_apertures(del_dict["Aperture"])
+        new_model.remove_doors(del_dict["Door"])
+        new_model.remove_shades(del_dict["Shade"])
+        new_model.remove_shade_meshes(del_dict["ShadeMesh"])
+        new_model.add_rooms(add_dict["Room"])
+        new_model.add_faces(add_dict["Face"])
+        new_model.add_apertures(add_dict["Aperture"])
+        new_model.add_doors(add_dict["Door"])
+        new_model.add_shades(add_dict["Shade"])
+        new_model.add_shade_meshes(add_dict["ShadeMesh"])
         return new_model
 
     @classmethod
-    def from_sync_files(
-            cls, base_model_file, other_model_file, sync_instructions_file):
+    def from_sync_files(cls, base_model_file, other_model_file, sync_instructions_file):
         """Initialize a Model from two model files and instructions for syncing them.
 
         Args:
@@ -426,19 +493,21 @@ class Model(_Base):
         """
         base_model = cls.from_file(base_model_file)
         other_model = cls.from_file(other_model_file)
-        assert os.path.isfile(sync_instructions_file), \
-            'Failed to find %s' % sync_instructions_file
+        assert os.path.isfile(sync_instructions_file), (
+            "Failed to find %s" % sync_instructions_file
+        )
         if sys.version_info < (3, 0):
             with open(sync_instructions_file) as inf:
                 sync_instructions = json.load(inf)
         else:
-            with open(sync_instructions_file, encoding='utf-8') as inf:
+            with open(sync_instructions_file, encoding="utf-8") as inf:
                 sync_instructions = json.load(inf)
         return cls.from_sync(base_model, other_model, sync_instructions)
 
     @classmethod
-    def from_objects(cls, identifier, objects, units='Meters',
-                     tolerance=None, angle_tolerance=1.0):
+    def from_objects(
+        cls, identifier, objects, units="Meters", tolerance=None, angle_tolerance=1.0
+    ):
         """Initialize a Model from a list of any type of honeybee-core geometry objects.
 
         Args:
@@ -486,16 +555,37 @@ class Model(_Base):
             elif isinstance(obj, Door):
                 doors.append(obj)
             else:
-                raise TypeError('Expected Room, Face, Shade, Aperture or Door '
-                                'for Model. Got {}'.format(type(obj)))
+                raise TypeError(
+                    "Expected Room, Face, Shade, Aperture or Door "
+                    "for Model. Got {}".format(type(obj))
+                )
 
-        return cls(identifier, rooms, faces, shades, apertures, doors, shade_meshes,
-                   units, tolerance, angle_tolerance)
+        return cls(
+            identifier,
+            rooms,
+            faces,
+            shades,
+            apertures,
+            doors,
+            shade_meshes,
+            units,
+            tolerance,
+            angle_tolerance,
+        )
 
     @classmethod
     def from_shoe_box(
-            cls, width, depth, height, orientation_angle=0, window_ratio=0,
-            adiabatic=True, units='Meters', tolerance=None, angle_tolerance=1.0):
+        cls,
+        width,
+        depth,
+        height,
+        orientation_angle=0,
+        window_ratio=0,
+        adiabatic=True,
+        units="Meters",
+        tolerance=None,
+        angle_tolerance=1.0,
+    ):
         """Create a model with a single shoe box Room.
 
         Args:
@@ -526,9 +616,9 @@ class Model(_Base):
         # create the box room and assign all of the attributes
         unique_id = str(uuid.uuid4())[:8]  # unique identifier for the shoe box
         tolerance = tolerance if tolerance is not None else UNITS_TOLERANCES[units]
-        room_id = 'Shoe_Box_Room_{}'.format(unique_id)
+        room_id = "Shoe_Box_Room_{}".format(unique_id)
         room = Room.from_box(room_id, width, depth, height, orientation_angle)
-        room.display_name = 'Shoe_Box_Room'
+        room.display_name = "Shoe_Box_Room"
         front_face = room[1]
         front_face.apertures_by_ratio(window_ratio, tolerance)
         if adiabatic and ad_bc:
@@ -536,15 +626,30 @@ class Model(_Base):
             for face in room[2:]:  # make all other face adiabatic
                 face.boundary_condition = ad_bc
         # create the model object
-        model_id = 'Shoe_Box_Model_{}'.format(unique_id)
-        return cls(model_id, [room], units=units, tolerance=tolerance,
-                   angle_tolerance=angle_tolerance)
+        model_id = "Shoe_Box_Model_{}".format(unique_id)
+        return cls(
+            model_id,
+            [room],
+            units=units,
+            tolerance=tolerance,
+            angle_tolerance=angle_tolerance,
+        )
 
     @classmethod
     def from_rectangle_plan(
-            cls, width, length, floor_to_floor_height, perimeter_offset=0, story_count=1,
-            orientation_angle=0, outdoor_roof=True, ground_floor=True,
-            units='Meters', tolerance=None, angle_tolerance=1.0):
+        cls,
+        width,
+        length,
+        floor_to_floor_height,
+        perimeter_offset=0,
+        story_count=1,
+        orientation_angle=0,
+        outdoor_roof=True,
+        ground_floor=True,
+        units="Meters",
+        tolerance=None,
+        angle_tolerance=1.0,
+    ):
         """Create a model with a rectangular floor plan.
 
         Note that the resulting Rooms in the model won't have any windows or solved
@@ -584,19 +689,44 @@ class Model(_Base):
         tolerance = tolerance if tolerance is not None else UNITS_TOLERANCES[units]
         unique_id = str(uuid.uuid4())[:8]  # unique identifier for the model
         rooms = Room.rooms_from_rectangle_plan(
-            width, length, floor_to_floor_height, perimeter_offset, story_count,
-            orientation_angle, outdoor_roof, ground_floor, unique_id, tolerance)
+            width,
+            length,
+            floor_to_floor_height,
+            perimeter_offset,
+            story_count,
+            orientation_angle,
+            outdoor_roof,
+            ground_floor,
+            unique_id,
+            tolerance,
+        )
         # create the model object
-        model_id = 'Rectangle_Plan_Model_{}'.format(unique_id)
-        return cls(model_id, rooms, units=units, tolerance=tolerance,
-                   angle_tolerance=angle_tolerance)
+        model_id = "Rectangle_Plan_Model_{}".format(unique_id)
+        return cls(
+            model_id,
+            rooms,
+            units=units,
+            tolerance=tolerance,
+            angle_tolerance=angle_tolerance,
+        )
 
     @classmethod
     def from_l_shaped_plan(
-            cls, width_1, length_1, width_2, length_2, floor_to_floor_height,
-            perimeter_offset=0, story_count=1, orientation_angle=0,
-            outdoor_roof=True, ground_floor=True,
-            units='Meters', tolerance=None, angle_tolerance=1.0):
+        cls,
+        width_1,
+        length_1,
+        width_2,
+        length_2,
+        floor_to_floor_height,
+        perimeter_offset=0,
+        story_count=1,
+        orientation_angle=0,
+        outdoor_roof=True,
+        ground_floor=True,
+        units="Meters",
+        tolerance=None,
+        angle_tolerance=1.0,
+    ):
         """Create a model with an L-shaped floor plan.
 
         Note that the resulting Rooms in the model won't have any windows or solved
@@ -640,13 +770,28 @@ class Model(_Base):
         tolerance = tolerance if tolerance is not None else UNITS_TOLERANCES[units]
         unique_id = str(uuid.uuid4())[:8]  # unique identifier for the model
         rooms = Room.rooms_from_l_shaped_plan(
-            width_1, length_1, width_2, length_2, floor_to_floor_height,
-            perimeter_offset, story_count,
-            orientation_angle, outdoor_roof, ground_floor, unique_id, tolerance)
+            width_1,
+            length_1,
+            width_2,
+            length_2,
+            floor_to_floor_height,
+            perimeter_offset,
+            story_count,
+            orientation_angle,
+            outdoor_roof,
+            ground_floor,
+            unique_id,
+            tolerance,
+        )
         # create the model object
-        model_id = 'L_Shaped_Plan_Model_{}'.format(unique_id)
-        return cls(model_id, rooms, units=units, tolerance=tolerance,
-                   angle_tolerance=angle_tolerance)
+        model_id = "L_Shaped_Plan_Model_{}".format(unique_id)
+        return cls(
+            model_id,
+            rooms,
+            units=units,
+            tolerance=tolerance,
+            angle_tolerance=angle_tolerance,
+        )
 
     @property
     def units(self):
@@ -656,8 +801,10 @@ class Model(_Base):
     @units.setter
     def units(self, value):
         value = value.title()
-        assert value in UNITS, '{} is not supported as a units system. ' \
-            'Choose from the following: {}'.format(value, UNITS)
+        assert value in UNITS, (
+            "{} is not supported as a units system. "
+            "Choose from the following: {}".format(value, UNITS)
+        )
         self._units = value
 
     @property
@@ -671,8 +818,11 @@ class Model(_Base):
 
     @tolerance.setter
     def tolerance(self, value):
-        self._tolerance = float_positive(value, 'model tolerance') if value is not None \
+        self._tolerance = (
+            float_positive(value, "model tolerance")
+            if value is not None
             else UNITS_TOLERANCES[self.units]
+        )
 
     @property
     def angle_tolerance(self):
@@ -687,7 +837,7 @@ class Model(_Base):
 
     @angle_tolerance.setter
     def angle_tolerance(self, value):
-        self._angle_tolerance = float_positive(value, 'model angle_tolerance')
+        self._angle_tolerance = float_positive(value, "model angle_tolerance")
 
     @property
     def rooms(self):
@@ -873,8 +1023,13 @@ class Model(_Base):
 
         Note that this property accounts for the room multipliers.
         """
-        return sum([room.floor_area * room.multiplier for room in self._rooms
-                    if not room.exclude_floor_area])
+        return sum(
+            [
+                room.floor_area * room.multiplier
+                for room in self._rooms
+                if not room.exclude_floor_area
+            ]
+        )
 
     @property
     def exposed_area(self):
@@ -911,8 +1066,9 @@ class Model(_Base):
 
         Note that this property accounts for the room multipliers.
         """
-        return sum([room.exterior_aperture_area * room.multiplier
-                    for room in self._rooms])
+        return sum(
+            [room.exterior_aperture_area * room.multiplier for room in self._rooms]
+        )
 
     @property
     def exterior_wall_aperture_area(self):
@@ -920,8 +1076,9 @@ class Model(_Base):
 
         Note that this property accounts for the room multipliers.
         """
-        return sum([room.exterior_wall_aperture_area * room.multiplier
-                    for room in self._rooms])
+        return sum(
+            [room.exterior_wall_aperture_area * room.multiplier for room in self._rooms]
+        )
 
     @property
     def exterior_skylight_aperture_area(self):
@@ -929,8 +1086,12 @@ class Model(_Base):
 
         Note that this property accounts for the room multipliers.
         """
-        return sum([room.exterior_skylight_aperture_area * room.multiplier
-                    for room in self._rooms])
+        return sum(
+            [
+                room.exterior_skylight_aperture_area * room.multiplier
+                for room in self._rooms
+            ]
+        )
 
     @property
     def min(self):
@@ -982,8 +1143,9 @@ class Model(_Base):
 
     def add_model(self, other_model):
         """Add another Model object to this model."""
-        assert isinstance(other_model, Model), \
-            'Expected Model. Got {}.'.format(type(other_model))
+        assert isinstance(other_model, Model), "Expected Model. Got {}.".format(
+            type(other_model)
+        )
         if self.units != other_model.units:
             other_model.convert_to_units(self.units)
         for room in other_model._rooms:
@@ -1001,40 +1163,50 @@ class Model(_Base):
 
     def add_room(self, obj):
         """Add a Room object to the model."""
-        assert isinstance(obj, Room), 'Expected Room. Got {}.'.format(type(obj))
+        assert isinstance(obj, Room), "Expected Room. Got {}.".format(type(obj))
         self._rooms.append(obj)
 
     def add_face(self, obj):
         """Add an orphaned Face object without a parent to the model."""
-        assert isinstance(obj, Face), 'Expected Face. Got {}.'.format(type(obj))
-        assert not obj.has_parent, 'Face "{}"" has a parent Room. Add the Room to '\
-            'the model instead of the Face.'.format(obj.display_name)
+        assert isinstance(obj, Face), "Expected Face. Got {}.".format(type(obj))
+        assert not obj.has_parent, (
+            'Face "{}"" has a parent Room. Add the Room to '
+            "the model instead of the Face.".format(obj.display_name)
+        )
         self._orphaned_faces.append(obj)
 
     def add_aperture(self, obj):
         """Add an orphaned Aperture object to the model."""
-        assert isinstance(obj, Aperture), 'Expected Aperture. Got {}.'.format(type(obj))
-        assert not obj.has_parent, 'Aperture "{}"" has a parent Face. Add the Face to '\
-            'the model instead of the Aperture.'.format(obj.display_name)
+        assert isinstance(obj, Aperture), "Expected Aperture. Got {}.".format(type(obj))
+        assert not obj.has_parent, (
+            'Aperture "{}"" has a parent Face. Add the Face to '
+            "the model instead of the Aperture.".format(obj.display_name)
+        )
         self._orphaned_apertures.append(obj)
 
     def add_door(self, obj):
         """Add an orphaned Door object to the model."""
-        assert isinstance(obj, Door), 'Expected Door. Got {}.'.format(type(obj))
-        assert not obj.has_parent, 'Door "{}"" has a parent Face. Add the Face to '\
-            'the model instead of the Door.'.format(obj.display_name)
+        assert isinstance(obj, Door), "Expected Door. Got {}.".format(type(obj))
+        assert not obj.has_parent, (
+            'Door "{}"" has a parent Face. Add the Face to '
+            "the model instead of the Door.".format(obj.display_name)
+        )
         self._orphaned_doors.append(obj)
 
     def add_shade(self, obj):
         """Add an orphaned Shade object to the model, typically representing context."""
-        assert isinstance(obj, Shade), 'Expected Shade. Got {}.'.format(type(obj))
-        assert not obj.has_parent, 'Shade "{}"" has a parent object. Add the object to '\
-            'the model instead of the Shade.'.format(obj.display_name)
+        assert isinstance(obj, Shade), "Expected Shade. Got {}.".format(type(obj))
+        assert not obj.has_parent, (
+            'Shade "{}"" has a parent object. Add the object to '
+            "the model instead of the Shade.".format(obj.display_name)
+        )
         self._orphaned_shades.append(obj)
 
     def add_shade_mesh(self, obj):
         """Add a ShadeMesh object to the model."""
-        assert isinstance(obj, ShadeMesh), 'Expected ShadeMesh. Got {}.'.format(type(obj))
+        assert isinstance(obj, ShadeMesh), "Expected ShadeMesh. Got {}.".format(
+            type(obj)
+        )
         self._shade_meshes.append(obj)
 
     def remove_rooms(self, room_ids=None):
@@ -1064,7 +1236,8 @@ class Model(_Base):
                 be removed. (Default: None).
         """
         self._orphaned_apertures = self._remove_by_ids(
-            self._orphaned_apertures, aperture_ids)
+            self._orphaned_apertures, aperture_ids
+        )
 
     def remove_doors(self, door_ids=None):
         """Remove orphaned Doors from the model.
@@ -1208,9 +1381,9 @@ class Model(_Base):
             else:
                 missing_ids.append(obj_id)
         if len(missing_ids) != 0:
-            all_objs = ' '.join(['"' + rid + '"' for rid in missing_ids])
+            all_objs = " ".join(['"' + rid + '"' for rid in missing_ids])
             raise ValueError(
-                'The following Rooms were not found in the model: {}'.format(all_objs)
+                "The following Rooms were not found in the model: {}".format(all_objs)
             )
         return rooms
 
@@ -1226,9 +1399,9 @@ class Model(_Base):
             else:
                 missing_ids.append(obj_id)
         if len(missing_ids) != 0:
-            all_objs = ' '.join(['"' + rid + '"' for rid in missing_ids])
+            all_objs = " ".join(['"' + rid + '"' for rid in missing_ids])
             raise ValueError(
-                'The following Faces were not found in the model: {}'.format(all_objs)
+                "The following Faces were not found in the model: {}".format(all_objs)
             )
         return faces
 
@@ -1244,10 +1417,11 @@ class Model(_Base):
             else:
                 missing_ids.append(obj_id)
         if len(missing_ids) != 0:
-            all_objs = ' '.join(['"' + rid + '"' for rid in missing_ids])
+            all_objs = " ".join(['"' + rid + '"' for rid in missing_ids])
             raise ValueError(
-                'The following Apertures were not found in the model:\n'
-                '{}'.format(all_objs)
+                "The following Apertures were not found in the model:\n{}".format(
+                    all_objs
+                )
             )
         return apertures
 
@@ -1263,9 +1437,9 @@ class Model(_Base):
             else:
                 missing_ids.append(obj_id)
         if len(missing_ids) != 0:
-            all_objs = ' '.join(['"' + rid + '"' for rid in missing_ids])
+            all_objs = " ".join(['"' + rid + '"' for rid in missing_ids])
             raise ValueError(
-                'The following Doors were not found in the model: {}'.format(all_objs)
+                "The following Doors were not found in the model: {}".format(all_objs)
             )
         return doors
 
@@ -1281,15 +1455,14 @@ class Model(_Base):
             else:
                 missing_ids.append(obj_id)
         if len(missing_ids) != 0:
-            all_objs = ' '.join(['"' + rid + '"' for rid in missing_ids])
+            all_objs = " ".join(['"' + rid + '"' for rid in missing_ids])
             raise ValueError(
-                'The following Shades were not found in the model: {}'.format(all_objs)
+                "The following Shades were not found in the model: {}".format(all_objs)
             )
         return shades
 
     def shade_meshes_by_identifier(self, identifiers):
-        """Get a list of ShadeMesh objects in the model given the ShadeMesh identifiers.
-        """
+        """Get a list of ShadeMesh objects in the model given the ShadeMesh identifiers."""
         shades, missing_ids = [], []
         model_shades = self._shade_meshes
         for obj_id in identifiers:
@@ -1300,9 +1473,9 @@ class Model(_Base):
             else:
                 missing_ids.append(obj_id)
         if len(missing_ids) != 0:
-            a_os = ' '.join(['"' + rid + '"' for rid in missing_ids])
+            a_os = " ".join(['"' + rid + '"' for rid in missing_ids])
             raise ValueError(
-                'The following ShadeMeshes were not found in the model: {}'.format(a_os)
+                "The following ShadeMeshes were not found in the model: {}".format(a_os)
             )
         return shades
 
@@ -1365,25 +1538,30 @@ class Model(_Base):
         # loop through the objects and change their identifiers
         for face in self.faces:
             new_id = clean_and_number_string(
-                face.display_name, face_dict, 'Face identifier')
+                face.display_name, face_dict, "Face identifier"
+            )
             face_map[face.identifier] = new_id
             face.identifier = new_id
         for ap in self.apertures:
             new_id = clean_and_number_string(
-                ap.display_name, ap_dict, 'Aperture identifier')
+                ap.display_name, ap_dict, "Aperture identifier"
+            )
             ap_map[ap.identifier] = new_id
             ap.identifier = new_id
         for dr in self.doors:
             new_id = clean_and_number_string(
-                dr.display_name, dr_dict, 'Door identifier')
+                dr.display_name, dr_dict, "Door identifier"
+            )
             dr_map[dr.identifier] = new_id
             dr.identifier = new_id
         for shade in self.shades:
             shade.identifier = clean_and_number_string(
-                shade.display_name, shd_dict, 'Shade identifier')
+                shade.display_name, shd_dict, "Shade identifier"
+            )
         for shade_mesh in self.shade_meshes:
             shade_mesh.identifier = clean_and_number_string(
-                shade_mesh.display_name, sm_dict, 'ShadeMesh identifier')
+                shade_mesh.display_name, sm_dict, "ShadeMesh identifier"
+            )
         # reset all of the Surface boundary conditions if requested
         if repair_surface_bcs:
             for room in self.rooms:
@@ -1402,29 +1580,41 @@ class Model(_Base):
                         for ap in face.apertures:
                             old_objs = ap.boundary_condition.boundary_condition_objects
                             try:
-                                new_objs = (ap_map[old_objs[0]], face_map[old_objs[1]],
-                                            room_map[old_objs[2]])
+                                new_objs = (
+                                    ap_map[old_objs[0]],
+                                    face_map[old_objs[1]],
+                                    room_map[old_objs[2]],
+                                )
                             except KeyError:  # missing adjacency
-                                new_objs = (old_objs[0], old_objs[1],
-                                            room_map[old_objs[2]])
+                                new_objs = (
+                                    old_objs[0],
+                                    old_objs[1],
+                                    room_map[old_objs[2]],
+                                )
                             new_bc = Surface(new_objs, True)
                             ap.boundary_condition = new_bc
                         for dr in face.doors:
                             old_objs = dr.boundary_condition.boundary_condition_objects
                             try:
-                                new_objs = (dr_map[old_objs[0]], face_map[old_objs[1]],
-                                            room_map[old_objs[2]])
+                                new_objs = (
+                                    dr_map[old_objs[0]],
+                                    face_map[old_objs[1]],
+                                    room_map[old_objs[2]],
+                                )
                             except KeyError:  # missing adjacency
-                                new_objs = (old_objs[0], old_objs[1],
-                                            room_map[old_objs[2]])
+                                new_objs = (
+                                    old_objs[0],
+                                    old_objs[1],
+                                    room_map[old_objs[2]],
+                                )
                             new_bc = Surface(new_objs, True)
                             dr.boundary_condition = new_bc
         # return a dictionary that maps between old and new IDs
         return {
-            'rooms': room_map,
-            'faces': face_map,
-            'apertures': ap_map,
-            'doors': dr_map
+            "rooms": room_map,
+            "faces": face_map,
+            "apertures": ap_map,
+            "doors": dr_map,
         }
 
     def reset_room_ids(self):
@@ -1441,15 +1631,22 @@ class Model(_Base):
         room_dict, room_map = {}, {}
         for room in self.rooms:
             new_id = clean_and_number_string(
-                room.display_name, room_dict, 'Room identifier')
+                room.display_name, room_dict, "Room identifier"
+            )
             room_map[room.identifier] = new_id
             room.identifier = new_id
         return room_map
 
     def solve_adjacency(
-            self, merge_coplanar=False, intersect=False, overwrite=False,
-            air_boundary=False, adiabatic=False,
-            tolerance=None, angle_tolerance=None):
+        self,
+        merge_coplanar=False,
+        intersect=False,
+        overwrite=False,
+        air_boundary=False,
+        adiabatic=False,
+        tolerance=None,
+        angle_tolerance=None,
+    ):
         """Solve adjacency between Rooms of the Model.
 
         Args:
@@ -1495,18 +1692,18 @@ class Model(_Base):
             adj_faces = Room.find_adjacency(self.rooms, tol)
             for face_pair in adj_faces:
                 face_pair[0].set_adjacency(face_pair[1])
-            adj_info = {'adjacent_faces': adj_faces}
+            adj_info = {"adjacent_faces": adj_faces}
 
         # try to assign the air boundary face type
         if air_boundary:
-            for face_pair in adj_info['adjacent_faces']:
+            for face_pair in adj_info["adjacent_faces"]:
                 if isinstance(face_pair[0].type, Wall):
                     face_pair[0].type = face_types.air_boundary
                     face_pair[1].type = face_types.air_boundary
 
         # try to assign the adiabatic boundary condition
         if adiabatic and ad_bc:
-            for face_pair in adj_info['adjacent_faces']:
+            for face_pair in adj_info["adjacent_faces"]:
                 face_pair[0].boundary_condition = ad_bc
                 face_pair[1].boundary_condition = ad_bc
 
@@ -1624,7 +1821,8 @@ class Model(_Base):
         self.properties.scale(factor, origin)
 
     def generate_exterior_face_grid(
-            self, dimension, offset=0.1, face_type='Wall', punched_geometry=False):
+        self, dimension, offset=0.1, face_type="Wall", punched_geometry=False
+    ):
         """Get a gridded Mesh3D offset from the exterior Faces of this Model.
 
         This will be None if the Model has no exterior Faces.
@@ -1651,26 +1849,26 @@ class Model(_Base):
         """
         # select the correct face type based on the input
         face_t = face_type.title()
-        if face_t == 'Wall':
+        if face_t == "Wall":
             ft = Wall
-        elif face_t in ('Roof', 'Roofceiling'):
+        elif face_t in ("Roof", "Roofceiling"):
             ft = RoofCeiling
-        elif face_t == 'All':
+        elif face_t == "All":
             ft = (Wall, RoofCeiling, Floor)
-        elif face_t == 'Floor':
+        elif face_t == "Floor":
             ft = Floor
         else:
             raise ValueError('Unrecognized face_type "{}".'.format(face_type))
-        face_attr = 'punched_geometry' if punched_geometry else 'geometry'
+        face_attr = "punched_geometry" if punched_geometry else "geometry"
         # loop through the faces and generate grids
         face_grids = []
         for face in self.faces:
-            if isinstance(face.type, ft) and \
-                    isinstance(face.boundary_condition, Outdoors):
+            if isinstance(face.type, ft) and isinstance(
+                face.boundary_condition, Outdoors
+            ):
                 try:
                     f_geo = getattr(face, face_attr)
-                    face_grids.append(
-                        f_geo.mesh_grid(dimension, None, offset, False))
+                    face_grids.append(f_geo.mesh_grid(dimension, None, offset, False))
                 except AssertionError:  # grid tolerance not fine enough
                     pass
         # join the grids together if there are several ones
@@ -1681,7 +1879,8 @@ class Model(_Base):
         return None
 
     def generate_exterior_aperture_grid(
-            self, dimension, offset=0.1, aperture_type='All'):
+        self, dimension, offset=0.1, aperture_type="All"
+    ):
         """Get a gridded Mesh3D offset from the exterior Apertures of this Model.
 
         Will be None if the Model has no exterior Apertures.
@@ -1703,23 +1902,25 @@ class Model(_Base):
         """
         # select the correct face type based on the input
         ap_t = aperture_type.title()
-        if ap_t == 'Window':
+        if ap_t == "Window":
             ft = Wall
-        elif ap_t == 'Skylight':
+        elif ap_t == "Skylight":
             ft = RoofCeiling
-        elif ap_t == 'All':
+        elif ap_t == "All":
             ft = (Wall, RoofCeiling, Floor)
         else:
             raise ValueError('Unrecognized aperture_type "{}".'.format(aperture_type))
         # loop through the faces and generate grids
         ap_grids = []
         for face in self.faces:
-            if isinstance(face.type, ft) and \
-                    isinstance(face.boundary_condition, Outdoors):
+            if isinstance(face.type, ft) and isinstance(
+                face.boundary_condition, Outdoors
+            ):
                 for ap in face.apertures:
                     try:
                         ap_grids.append(
-                            ap.geometry.mesh_grid(dimension, None, offset, False))
+                            ap.geometry.mesh_grid(dimension, None, offset, False)
+                        )
                     except AssertionError:  # grid tolerance not fine enough
                         pass
         # join the grids together if there are several ones
@@ -1756,8 +1957,14 @@ class Model(_Base):
             self.solve_adjacency()
 
     def rectangularize_apertures(
-            self, subdivision_distance=None, max_separation=None, merge_all=False,
-            resolve_adjacency=True, tolerance=None, angle_tolerance=None):
+        self,
+        subdivision_distance=None,
+        max_separation=None,
+        merge_all=False,
+        resolve_adjacency=True,
+        tolerance=None,
+        angle_tolerance=None,
+    ):
         """Convert all Apertures on this Room to be rectangular.
 
         This is useful when exporting to simulation engines that only accept
@@ -1804,7 +2011,8 @@ class Model(_Base):
         a_tol = angle_tolerance if angle_tolerance else self.angle_tolerance
         for room in self._rooms:
             room.rectangularize_apertures(
-                subdivision_distance, max_separation, merge_all, tol, a_tol)
+                subdivision_distance, max_separation, merge_all, tol, a_tol
+            )
         if resolve_adjacency:
             self.solve_adjacency()
 
@@ -1941,7 +2149,7 @@ class Model(_Base):
             extrusion_rooms.append(room.to_extrusion(tol, a_tol))
         self._rooms = extrusion_rooms
 
-    def convert_to_units(self, units='Meters'):
+    def convert_to_units(self, units="Meters"):
         """Convert all of the geometry in this model to certain units.
 
         This involves scaling the geometry, scaling the Model tolerance, and
@@ -1976,8 +2184,9 @@ class Model(_Base):
         for room in self._rooms:
             for face in room._faces:
                 face._parent = None
-                if not isinstance(face.boundary_condition, Surface) and not \
-                        isinstance(face.type, AirBoundary):
+                if not isinstance(face.boundary_condition, Surface) and not isinstance(
+                    face.type, AirBoundary
+                ):
                     self._orphaned_faces.append(face)
         self._rooms = []
 
@@ -1999,8 +2208,9 @@ class Model(_Base):
                 r_adj = room.clean_envelope(adj_dict, tolerance=tolerance)
                 adj_dict.update(r_adj)
             except AssertionError as e:  # room removed; likely wrong units
-                error = 'Failed to remove degenerate geometry for Room {}.\n{}'.format(
-                    room.full_id, e)
+                error = "Failed to remove degenerate geometry for Room {}.\n{}".format(
+                    room.full_id, e
+                )
                 raise ValueError(error)
         self._remove_degenerate_faces(self._orphaned_faces, tolerance)
         self._remove_degenerate_faces(self._orphaned_apertures, tolerance)
@@ -2029,12 +2239,15 @@ class Model(_Base):
                 will be used. (Default: None).
         """
         tolerance = self.tolerance if tolerance is None else tolerance
-        self._orphaned_apertures = \
-            self._triangulate_quad_faces(self._orphaned_apertures, tolerance)
-        self._orphaned_doors = \
-            self._triangulate_quad_faces(self._orphaned_doors, tolerance)
-        self._orphaned_shades = \
-            self._triangulate_quad_faces(self._orphaned_shades, tolerance)
+        self._orphaned_apertures = self._triangulate_quad_faces(
+            self._orphaned_apertures, tolerance
+        )
+        self._orphaned_doors = self._triangulate_quad_faces(
+            self._orphaned_doors, tolerance
+        )
+        self._orphaned_shades = self._triangulate_quad_faces(
+            self._orphaned_shades, tolerance
+        )
 
     def comparison_report(self, other_model, ignore_deleted=False, ignore_added=False):
         """Get a dictionary outlining the differences between this model and another.
@@ -2070,7 +2283,7 @@ class Model(_Base):
             other_model = other_model.duplicate()
             other_model.convert_to_units(self.units)
         # set up lists and dictionaries of objects for comparison
-        compare_dict = {'type': 'ComparisonReport'}
+        compare_dict = {"type": "ComparisonReport"}
         self_dict = self.top_level_dict
         other_dict = other_model.top_level_dict
         # loop through the new objects and detect changes between them
@@ -2083,13 +2296,13 @@ class Model(_Base):
                     changed.append(change_dict)
             except KeyError:
                 added_objs.append(new_obj)
-        compare_dict['changed_objects'] = changed
+        compare_dict["changed_objects"] = changed
         # include the added objects in the comparison dictionary
         if not ignore_added:
             added = []
             for new_obj in added_objs:
-                added.append(new_obj._base_report_dict('AddedObject'))
-            compare_dict['added_objects'] = added
+                added.append(new_obj._base_report_dict("AddedObject"))
+            compare_dict["added_objects"] = added
         # include the deleted objects in the comparison dictionary
         if not ignore_deleted:
             deleted = []
@@ -2097,12 +2310,13 @@ class Model(_Base):
                 try:
                     new_obj = other_dict[obj_id]
                 except KeyError:
-                    deleted.append(exist_obj._base_report_dict('DeletedObject'))
-            compare_dict['deleted_objects'] = deleted
+                    deleted.append(exist_obj._base_report_dict("DeletedObject"))
+            compare_dict["deleted_objects"] = deleted
         return compare_dict
 
-    def check_for_extension(self, extension_name='All',
-                            raise_exception=True, detailed=False):
+    def check_for_extension(
+        self, extension_name="All", raise_exception=True, detailed=False
+    ):
         """Check that the Model is valid for a specific Honeybee extension.
 
         This process will typically include both honeybee-core checks as well
@@ -2144,19 +2358,21 @@ class Model(_Base):
         # set up defaults to ensure the method runs correctly
         detailed = False if raise_exception else detailed
         extension_name = extension_name.lower()
-        if extension_name == 'all':
+        if extension_name == "all":
             return self.check_all(raise_exception, detailed)
-        energy_extensions = ('energyplus', 'openstudio', 'designbuilder')
+        energy_extensions = ("energyplus", "openstudio", "designbuilder")
         if extension_name in energy_extensions:
-            extension_name = 'energy'
-        elif extension_name == 'iesve':  # TODO: remove when honeybee-iesve is published
-            extension_name = 'ies'
+            extension_name = "energy"
+        elif extension_name == "iesve":  # TODO: remove when honeybee-iesve is published
+            extension_name = "ies"
 
         # check the extension attributes
-        assert self.tolerance != 0, \
-            'Model must have a non-zero tolerance in order to perform geometry checks.'
-        assert self.angle_tolerance != 0, \
-            'Model must have a non-zero angle_tolerance to perform geometry checks.'
+        assert self.tolerance != 0, (
+            "Model must have a non-zero tolerance in order to perform geometry checks."
+        )
+        assert self.angle_tolerance != 0, (
+            "Model must have a non-zero angle_tolerance to perform geometry checks."
+        )
         msgs = self._properties._check_for_extension(extension_name, detailed)
         if detailed:
             msgs = [m for m in msgs if isinstance(m, list)]
@@ -2165,7 +2381,7 @@ class Model(_Base):
         full_msgs = [msg for msg in msgs if msg]
         if detailed:
             return [m for msg in full_msgs for m in msg]
-        full_msg = '\n'.join(full_msgs)
+        full_msg = "\n".join(full_msgs)
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2194,10 +2410,12 @@ class Model(_Base):
         detailed = False if raise_exception else detailed
         msgs = []
         # check that a tolerance has been specified in the model
-        assert self.tolerance != 0, \
-            'Model must have a non-zero tolerance in order to perform geometry checks.'
-        assert self.angle_tolerance != 0, \
-            'Model must have a non-zero angle_tolerance to perform geometry checks.'
+        assert self.tolerance != 0, (
+            "Model must have a non-zero tolerance in order to perform geometry checks."
+        )
+        assert self.angle_tolerance != 0, (
+            "Model must have a non-zero angle_tolerance to perform geometry checks."
+        )
         tol = self.tolerance
         ang_tol = self.angle_tolerance
 
@@ -2231,7 +2449,7 @@ class Model(_Base):
         full_msgs = [msg for msg in msgs if msg]
         if detailed:
             return [m for msg in full_msgs for m in msg]
-        full_msg = '\n'.join(full_msgs)
+        full_msg = "\n".join(full_msgs)
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2265,7 +2483,7 @@ class Model(_Base):
         full_msgs = [msg for msg in msgs if msg]
         if detailed:
             return [m for msg in full_msgs for m in msg]
-        full_msg = '\n'.join(full_msgs)
+        full_msg = "\n".join(full_msgs)
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2283,8 +2501,14 @@ class Model(_Base):
             A string with the message or a list with a dictionary if detailed is True.
         """
         return check_duplicate_identifiers(
-            self._rooms, raise_exception, 'Room', detailed, '000004', 'Core',
-            'Duplicate Room Identifier')
+            self._rooms,
+            raise_exception,
+            "Room",
+            detailed,
+            "000004",
+            "Core",
+            "Duplicate Room Identifier",
+        )
 
     def check_duplicate_face_identifiers(self, raise_exception=True, detailed=False):
         """Check that there are no duplicate Face identifiers in the model.
@@ -2299,10 +2523,18 @@ class Model(_Base):
             A string with the message or a list with a dictionary if detailed is True.
         """
         return check_duplicate_identifiers_parent(
-            self.faces, raise_exception, 'Face', detailed, '000003', 'Core',
-            'Duplicate Face Identifier')
+            self.faces,
+            raise_exception,
+            "Face",
+            detailed,
+            "000003",
+            "Core",
+            "Duplicate Face Identifier",
+        )
 
-    def check_duplicate_sub_face_identifiers(self, raise_exception=True, detailed=False):
+    def check_duplicate_sub_face_identifiers(
+        self, raise_exception=True, detailed=False
+    ):
         """Check that there are no duplicate sub-face identifiers in the model.
 
         Note that both Apertures and Doors are checked for duplicates since the two
@@ -2319,8 +2551,14 @@ class Model(_Base):
         """
         sub_faces = self.apertures + self.doors
         return check_duplicate_identifiers_parent(
-            sub_faces, raise_exception, 'SubFace', detailed, '000002', 'Core',
-            'Duplicate Sub-Face Identifier')
+            sub_faces,
+            raise_exception,
+            "SubFace",
+            detailed,
+            "000002",
+            "Core",
+            "Duplicate Sub-Face Identifier",
+        )
 
     def check_duplicate_shade_identifiers(self, raise_exception=True, detailed=False):
         """Check that there are no duplicate Shade identifiers in the model.
@@ -2335,11 +2573,18 @@ class Model(_Base):
             A string with the message or a list with a dictionary if detailed is True.
         """
         return check_duplicate_identifiers_parent(
-            self.shades, raise_exception, 'Shade', detailed, '000001', 'Core',
-            'Duplicate Shade Identifier')
+            self.shades,
+            raise_exception,
+            "Shade",
+            detailed,
+            "000001",
+            "Core",
+            "Duplicate Shade Identifier",
+        )
 
     def check_duplicate_shade_mesh_identifiers(
-            self, raise_exception=True, detailed=False):
+        self, raise_exception=True, detailed=False
+    ):
         """Check that there are no duplicate ShadeMesh identifiers in the model.
 
         Args:
@@ -2352,8 +2597,14 @@ class Model(_Base):
             A string with the message or a list with a dictionary if detailed is True.
         """
         return check_duplicate_identifiers(
-            self._shade_meshes, raise_exception, 'ShadeMesh', detailed, '000001', 'Core',
-            'Duplicate ShadeMesh Identifier')
+            self._shade_meshes,
+            raise_exception,
+            "ShadeMesh",
+            detailed,
+            "000001",
+            "Core",
+            "Duplicate ShadeMesh Identifier",
+        )
 
     def check_planar(self, tolerance=None, raise_exception=True, detailed=False):
         """Check that all of the Model's geometry components are planar.
@@ -2386,13 +2637,14 @@ class Model(_Base):
         full_msgs = [msg for msg in msgs if msg]
         if detailed:
             return [m for msg in full_msgs for m in msg]
-        full_msg = '\n'.join(full_msgs)
+        full_msg = "\n".join(full_msgs)
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
-    def check_self_intersecting(self, tolerance=None, raise_exception=True,
-                                detailed=False):
+    def check_self_intersecting(
+        self, tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check that no edges of the Model's geometry components self-intersect.
 
         This includes all of the Model's Faces, Apertures, Doors and Shades.
@@ -2425,13 +2677,14 @@ class Model(_Base):
         full_msgs = [msg for msg in msgs if msg]
         if detailed:
             return [m for msg in full_msgs for m in msg]
-        full_msg = '\n'.join(full_msgs)
+        full_msg = "\n".join(full_msgs)
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
     def check_degenerate_rooms(
-            self, tolerance=None, raise_exception=True, detailed=False):
+        self, tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check whether there are degenerate Rooms (with zero volume) within the Model.
 
         Args:
@@ -2453,17 +2706,18 @@ class Model(_Base):
             msg = room.check_degenerate(tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
-    def check_sub_faces_valid(self, tolerance=None, angle_tolerance=None,
-                              raise_exception=True, detailed=False):
+    def check_sub_faces_valid(
+        self, tolerance=None, angle_tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check that model's sub-faces are co-planar with faces and in their boundary.
 
         Note this does not check the planarity of the sub-faces themselves, whether
@@ -2485,31 +2739,33 @@ class Model(_Base):
             A string with the message or a list with a dictionary if detailed is True.
         """
         tolerance = self.tolerance if tolerance is None else tolerance
-        angle_tolerance = self.angle_tolerance \
-            if angle_tolerance is None else angle_tolerance
+        angle_tolerance = (
+            self.angle_tolerance if angle_tolerance is None else angle_tolerance
+        )
         detailed = False if raise_exception else detailed
         msgs = []
         for rm in self._rooms:
             msg = rm.check_sub_faces_valid(tolerance, angle_tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         for f in self._orphaned_faces:
             msg = f.check_sub_faces_valid(tolerance, angle_tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
     def check_sub_faces_overlapping(
-            self, tolerance=None, raise_exception=True, detailed=False):
+        self, tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check that model's sub-faces do not overlap with one another.
 
         Args:
@@ -2531,23 +2787,24 @@ class Model(_Base):
             msg = rm.check_sub_faces_overlapping(tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         for f in self._orphaned_faces:
             msg = f.check_sub_faces_overlapping(tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
     def check_upside_down_faces(
-            self, angle_tolerance=None, raise_exception=True, detailed=False):
+        self, angle_tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check that the Model's Faces have the correct direction for the face type.
 
         This method will only report Floors that are pointing upwards or RoofCeilings
@@ -2576,17 +2833,18 @@ class Model(_Base):
             msg = rm.check_upside_down_faces(a_tol, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
-    def check_rooms_solid(self, tolerance=None, angle_tolerance=None,
-                          raise_exception=True, detailed=False):
+    def check_rooms_solid(
+        self, tolerance=None, angle_tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check whether the Model's rooms are closed solid to within tolerances.
 
         Args:
@@ -2605,25 +2863,27 @@ class Model(_Base):
             A string with the message or a list with a dictionary if detailed is True.
         """
         tolerance = self.tolerance if tolerance is None else tolerance
-        angle_tolerance = self.angle_tolerance \
-            if angle_tolerance is None else angle_tolerance
+        angle_tolerance = (
+            self.angle_tolerance if angle_tolerance is None else angle_tolerance
+        )
         detailed = False if raise_exception else detailed
         msgs = []
         for room in self._rooms:
             msg = room.check_solid(tolerance, angle_tolerance, False, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
 
     def check_room_volume_collisions(
-            self, tolerance=None, raise_exception=True, detailed=False):
+        self, tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check whether the Model's rooms collide with one another beyond the tolerance.
 
         Args:
@@ -2643,7 +2903,7 @@ class Model(_Base):
         detailed = False if raise_exception else detailed
         # group the rooms by their floor heights to enable collision checking
         if len(self.rooms) == 0:
-            return [] if detailed else ''
+            return [] if detailed else ""
         room_groups, _ = Room.group_by_floor_height(self.rooms, tolerance)
         # loop trough the groups and detect collisions
         msgs = []
@@ -2651,11 +2911,11 @@ class Model(_Base):
             msg = Room.check_room_volume_collisions(rg, tolerance, detailed)
             if detailed:
                 msgs.extend(msg)
-            elif msg != '':
+            elif msg != "":
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2682,20 +2942,31 @@ class Model(_Base):
         for room in self._rooms:
             for face in room._faces:
                 if isinstance(face.boundary_condition, Surface):
-                    sr.append(self._self_adj_check(
-                        'Face', face, face_bc_ids, room_ids, face_set, detailed))
+                    sr.append(
+                        self._self_adj_check(
+                            "Face", face, face_bc_ids, room_ids, face_set, detailed
+                        )
+                    )
                     for ap in face.apertures:
-                        assert isinstance(ap.boundary_condition, Surface), \
-                            'Aperture "{}" must have Surface boundary condition ' \
-                            'if the parent Face has a Surface BC.'.format(ap.full_id)
-                        sr.append(self._self_adj_check(
-                            'Aperture', ap, ap_bc_ids, room_ids, ap_set, detailed))
+                        assert isinstance(ap.boundary_condition, Surface), (
+                            'Aperture "{}" must have Surface boundary condition '
+                            "if the parent Face has a Surface BC.".format(ap.full_id)
+                        )
+                        sr.append(
+                            self._self_adj_check(
+                                "Aperture", ap, ap_bc_ids, room_ids, ap_set, detailed
+                            )
+                        )
                     for dr in face.doors:
-                        assert isinstance(dr.boundary_condition, Surface), \
-                            'Door "{}" must have Surface boundary condition ' \
-                            'if the parent Face has a Surface BC.'.format(dr.full_id)
-                        sr.append(self._self_adj_check(
-                            'Door', dr, door_bc_ids, room_ids, dr_set, detailed))
+                        assert isinstance(dr.boundary_condition, Surface), (
+                            'Door "{}" must have Surface boundary condition '
+                            "if the parent Face has a Surface BC.".format(dr.full_id)
+                        )
+                        sr.append(
+                            self._self_adj_check(
+                                "Door", dr, door_bc_ids, room_ids, dr_set, detailed
+                            )
+                        )
         # check to see if the adjacent objects are in the model
         mr = self._missing_adj_check(self.rooms_by_identifier, room_ids)
         mf = self._missing_adj_check(self.faces_by_identifier, face_bc_ids)
@@ -2710,37 +2981,44 @@ class Model(_Base):
                         bc_obj, bc_room = self._adj_objects(face)
                         if bc_obj in mf:
                             self._missing_adj_msg(
-                                msgs, face, bc_obj, 'Face', 'Face', detailed)
+                                msgs, face, bc_obj, "Face", "Face", detailed
+                            )
                         if bc_room in mr:
                             self._missing_adj_msg(
-                                msgs, face, bc_room, 'Face', 'Room', detailed)
+                                msgs, face, bc_room, "Face", "Room", detailed
+                            )
                         for ap in face.apertures:
                             bc_obj, bc_room = self._adj_objects(ap)
                             if bc_obj in ma:
                                 self._missing_adj_msg(
-                                    msgs, ap, bc_obj, 'Aperture', 'Aperture', detailed)
+                                    msgs, ap, bc_obj, "Aperture", "Aperture", detailed
+                                )
                             if bc_room in mr:
                                 self._missing_adj_msg(
-                                    msgs, ap, bc_room, 'Aperture', 'Room', detailed)
+                                    msgs, ap, bc_room, "Aperture", "Room", detailed
+                                )
                         for dr in face.doors:
                             bc_obj, bc_room = self._adj_objects(dr)
                             if bc_obj in md:
                                 self._missing_adj_msg(
-                                    msgs, dr, bc_obj, 'Door', 'Door', detailed)
+                                    msgs, dr, bc_obj, "Door", "Door", detailed
+                                )
                             if bc_room in mr:
                                 self._missing_adj_msg(
-                                    msgs, dr, bc_room, 'Door', 'Room', detailed)
+                                    msgs, dr, bc_room, "Door", "Room", detailed
+                                )
         # return the final error messages
         all_msgs = [m for m in sr + msgs if m]
         if detailed:
             return [m for msg in all_msgs for m in msg]
-        msg = '\n'.join(all_msgs)
-        if msg != '' and raise_exception:
+        msg = "\n".join(all_msgs)
+        if msg != "" and raise_exception:
             raise ValueError(msg)
         return msg
 
-    def check_matching_adjacent_areas(self, tolerance=None, raise_exception=True,
-                                      detailed=False):
+    def check_matching_adjacent_areas(
+        self, tolerance=None, raise_exception=True, detailed=False
+    ):
         """Check that all adjacent Faces have areas that match within the tolerance.
 
         This is required for energy simulation in order to get matching heat flow
@@ -2778,8 +3056,10 @@ class Model(_Base):
             if detailed:  # the user will get a more detailed error in honeybee-core
                 return []
             else:
-                msg = 'Matching adjacent areas could not be verified because ' \
-                    'of missing adjacencies in the model.  \n{}'.format(e)
+                msg = (
+                    "Matching adjacent areas could not be verified because "
+                    "of missing adjacencies in the model.  \n{}".format(e)
+                )
                 if raise_exception:
                     raise ValueError(msg)
                 return msg
@@ -2795,29 +3075,39 @@ class Model(_Base):
             tol_area = max_dim * two_tol
             tol_area = 2 * two_tol if tol_area < 2 * two_tol else tol_area
             if abs(base_f.area - adj_f.area) > tol_area:
-                f_msg = 'Face "{}" with area {} is adjacent to Face "{}" with area {}.' \
-                    ' This difference is greater than what is permitted by {} ' \
-                    'tolerance ({}).'.format(
-                        base_f.full_id, base_f.area, adj_f.full_id, adj_f.area,
-                        tolerance, tol_area
+                f_msg = (
+                    'Face "{}" with area {} is adjacent to Face "{}" with area {}.'
+                    " This difference is greater than what is permitted by {} "
+                    "tolerance ({}).".format(
+                        base_f.full_id,
+                        base_f.area,
+                        adj_f.full_id,
+                        adj_f.area,
+                        tolerance,
+                        tol_area,
                     )
+                )
                 f_msg = self._validation_message_child(
-                    f_msg, base_f, detailed, '000205',
-                    error_type='Mismatched Area Adjacency')
+                    f_msg,
+                    base_f,
+                    detailed,
+                    "000205",
+                    error_type="Mismatched Area Adjacency",
+                )
                 if detailed:
-                    f_msg['element_id'].append(adj_f.identifier)
-                    f_msg['element_name'].append(adj_f.display_name)
+                    f_msg["element_id"].append(adj_f.identifier)
+                    f_msg["element_name"].append(adj_f.display_name)
                     parents = []
                     rel_obj = adj_f
-                    while getattr(rel_obj, '_parent', None) is not None:
-                        rel_obj = getattr(rel_obj, '_parent')
+                    while getattr(rel_obj, "_parent", None) is not None:
+                        rel_obj = getattr(rel_obj, "_parent")
                         par_dict = {
-                            'parent_type': rel_obj.__class__.__name__,
-                            'id': rel_obj.identifier,
-                            'name': rel_obj.display_name
+                            "parent_type": rel_obj.__class__.__name__,
+                            "id": rel_obj.identifier,
+                            "name": rel_obj.display_name,
                         }
                         parents.append(par_dict)
-                    f_msg['parents'].append(parents)
+                    f_msg["parents"].append(parents)
                 full_msgs.append(f_msg)
                 reported_items.add((adj_f.identifier, base_f.identifier))
             else:  # check to ensure the shapes are the same when vertices are removed
@@ -2827,29 +3117,38 @@ class Model(_Base):
                 except AssertionError:  # degenerate Faces to ignore
                     continue
                 if len(base_f_geo) != len(adj_f_geo):
-                    f_msg = 'Face "{}" is a shape with {} distinct vertices and is ' \
-                        'adjacent to Face "{}", which has {} distinct vertices' \
-                        ' within the model tolerance of {}.'.format(
-                            base_f.full_id, len(base_f_geo),
-                            adj_f.full_id, len(adj_f_geo), tolerance
+                    f_msg = (
+                        'Face "{}" is a shape with {} distinct vertices and is '
+                        'adjacent to Face "{}", which has {} distinct vertices'
+                        " within the model tolerance of {}.".format(
+                            base_f.full_id,
+                            len(base_f_geo),
+                            adj_f.full_id,
+                            len(adj_f_geo),
+                            tolerance,
                         )
+                    )
                     f_msg = self._validation_message_child(
-                        f_msg, base_f, detailed, '000205',
-                        error_type='Mismatched Area Adjacency')
+                        f_msg,
+                        base_f,
+                        detailed,
+                        "000205",
+                        error_type="Mismatched Area Adjacency",
+                    )
                     if detailed:
-                        f_msg['element_id'].append(adj_f.identifier)
-                        f_msg['element_name'].append(adj_f.display_name)
+                        f_msg["element_id"].append(adj_f.identifier)
+                        f_msg["element_name"].append(adj_f.display_name)
                         parents = []
                         rel_obj = adj_f
-                        while getattr(rel_obj, '_parent', None) is not None:
-                            rel_obj = getattr(rel_obj, '_parent')
+                        while getattr(rel_obj, "_parent", None) is not None:
+                            rel_obj = getattr(rel_obj, "_parent")
                             par_dict = {
-                                'parent_type': rel_obj.__class__.__name__,
-                                'id': rel_obj.identifier,
-                                'name': rel_obj.display_name
+                                "parent_type": rel_obj.__class__.__name__,
+                                "id": rel_obj.identifier,
+                                "name": rel_obj.display_name,
                             }
                             parents.append(par_dict)
-                        f_msg['parents'].append(parents)
+                        f_msg["parents"].append(parents)
                     full_msgs.append(f_msg)
                     reported_items.add((adj_f.identifier, base_f.identifier))
 
@@ -2874,34 +3173,44 @@ class Model(_Base):
                         tol_area = math.sqrt(base_sf.area) * two_tol
                         tol_area = 2 * two_tol if tol_area < 2 * two_tol else tol_area
                         if abs(base_sf.area - adj_sf.area) > tol_area:
-                            f_msg = 'SubFace "{}" with area {} is adjacent to ' \
-                                'SubFace "{}" with area {}. This difference is greater ' \
-                                'than what is permitted at {} tolerance ({}).'.format(
-                                    base_sf.full_id, base_sf.area,
-                                    adj_sf.full_id, adj_sf.area, tolerance, tol_area
+                            f_msg = (
+                                'SubFace "{}" with area {} is adjacent to '
+                                'SubFace "{}" with area {}. This difference is greater '
+                                "than what is permitted at {} tolerance ({}).".format(
+                                    base_sf.full_id,
+                                    base_sf.area,
+                                    adj_sf.full_id,
+                                    adj_sf.area,
+                                    tolerance,
+                                    tol_area,
                                 )
+                            )
                             f_msg = self._validation_message_child(
-                                f_msg, base_sf, detailed, '000205',
-                                error_type='Mismatched Area Adjacency')
+                                f_msg,
+                                base_sf,
+                                detailed,
+                                "000205",
+                                error_type="Mismatched Area Adjacency",
+                            )
                             if detailed:
-                                f_msg['element_id'].append(adj_sf.identifier)
-                                f_msg['element_name'].append(adj_sf.display_name)
+                                f_msg["element_id"].append(adj_sf.identifier)
+                                f_msg["element_name"].append(adj_sf.display_name)
                                 parents = []
                                 rel_obj = adj_sf
-                                while getattr(rel_obj, '_parent', None) is not None:
-                                    rel_obj = getattr(rel_obj, '_parent')
+                                while getattr(rel_obj, "_parent", None) is not None:
+                                    rel_obj = getattr(rel_obj, "_parent")
                                     par_dict = {
-                                        'parent_type': rel_obj.__class__.__name__,
-                                        'id': rel_obj.identifier,
-                                        'name': rel_obj.display_name
+                                        "parent_type": rel_obj.__class__.__name__,
+                                        "id": rel_obj.identifier,
+                                        "name": rel_obj.display_name,
                                     }
                                     parents.append(par_dict)
-                                f_msg['parents'].append(parents)
+                                f_msg["parents"].append(parents)
                             full_msgs.append(f_msg)
                             reported_items.add((adj_f.identifier, base_f.identifier))
 
         # return all of the validation error messages that were gathered
-        full_msg = full_msgs if detailed else '\n'.join(full_msgs)
+        full_msg = full_msgs if detailed else "\n".join(full_msgs)
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2923,16 +3232,20 @@ class Model(_Base):
         detailed = False if raise_exception else detailed
         msgs = []
         for face in self.faces:
-            if isinstance(face.type, AirBoundary) and not \
-                    isinstance(face.boundary_condition, Surface):
-                msg = 'Face "{}" is an AirBoundary but is not adjacent ' \
-                      'to another Face.'.format(face.full_id)
+            if isinstance(face.type, AirBoundary) and not isinstance(
+                face.boundary_condition, Surface
+            ):
+                msg = (
+                    'Face "{}" is an AirBoundary but is not adjacent '
+                    "to another Face.".format(face.full_id)
+                )
                 msg = self._validation_message_child(
-                    msg, face, detailed, '000206', error_type='Non-Adjacent AirBoundary')
+                    msg, face, detailed, "000206", error_type="Non-Adjacent AirBoundary"
+                )
                 msgs.append(msg)
         if detailed:
             return msgs
-        full_msg = '\n'.join(msgs)
+        full_msg = "\n".join(msgs)
         if raise_exception and len(msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2991,7 +3304,9 @@ class Model(_Base):
                             adj_ap = other_ap
                             break
                     new_adj_ap_geo = [face.flip() for face in new_ap_geo]
-                    new_adj_aps, edit_in = self._replace_aperture(adj_ap, new_adj_ap_geo)
+                    new_adj_aps, edit_in = self._replace_aperture(
+                        adj_ap, new_adj_ap_geo
+                    )
                     for new_ap, new_adj_ap in zip(new_aps, new_adj_aps):
                         new_ap.set_adjacency(new_adj_ap)
                     triangulated_apertures.append(new_adj_aps)
@@ -3091,11 +3406,11 @@ class Model(_Base):
             if len(geo.vertices) == 4 and not geo.check_planar(tolerance, False):
                 verts = geo.vertices
                 obj_1 = geo_obj.duplicate()
-                obj_1.identifier = '{}..0'.format(geo_obj.identifier)
+                obj_1.identifier = "{}..0".format(geo_obj.identifier)
                 obj_1._geometry = Face3D((verts[0], verts[1], verts[2]))
                 clean_objects.append(obj_1)
                 obj_2 = geo_obj.duplicate()
-                obj_2.identifier = '{}..1'.format(geo_obj.identifier)
+                obj_2.identifier = "{}..1".format(geo_obj.identifier)
                 obj_2._geometry = Face3D((verts[2], verts[3], verts[0]))
                 clean_objects.append(obj_2)
             else:
@@ -3132,9 +3447,15 @@ class Model(_Base):
         # make the new Apertures and add them to the model
         new_aps = []
         for i, ap_face in enumerate(new_ap_geo):
-            new_ap = Aperture('{}..{}'.format(original_ap.identifier, i),
-                              ap_face, None, original_ap.is_operable)
-            new_ap._properties = original_ap._properties  # transfer extension properties
+            new_ap = Aperture(
+                "{}..{}".format(original_ap.identifier, i),
+                ap_face,
+                None,
+                original_ap.is_operable,
+            )
+            new_ap._properties = (
+                original_ap._properties
+            )  # transfer extension properties
             if original_ap.has_parent:
                 new_ap._parent = original_ap.parent
             new_aps.append(new_ap)
@@ -3185,8 +3506,10 @@ class Model(_Base):
         # make the new doors and add them to the model
         new_drs = []
         for i, dr_face in enumerate(new_dr_geo):
-            new_dr = Door('{}..{}'.format(original_dr.identifier, i), dr_face)
-            new_dr._properties = original_dr._properties  # transfer extension properties
+            new_dr = Door("{}..{}".format(original_dr.identifier, i), dr_face)
+            new_dr._properties = (
+                original_dr._properties
+            )  # transfer extension properties
             if original_dr.has_parent:
                 new_dr._parent = original_dr.parent
             new_drs.append(new_dr)
@@ -3222,8 +3545,9 @@ class Model(_Base):
         """
         return writer
 
-    def to_dict(self, included_prop=None, triangulate_sub_faces=False,
-                include_plane=True):
+    def to_dict(
+        self, included_prop=None, triangulate_sub_faces=False, include_plane=True
+    ):
         """Return Model as a dictionary.
 
         Args:
@@ -3245,77 +3569,95 @@ class Model(_Base):
                 keep the dictionary smaller. (Default: True).
         """
         # write all of the geometry objects and their properties
-        base = {'type': 'Model'}
-        base['identifier'] = self.identifier
-        base['display_name'] = self.display_name
-        base['units'] = self.units
-        base['properties'] = self.properties.to_dict(included_prop)
+        base = {"type": "Model"}
+        base["identifier"] = self.identifier
+        base["display_name"] = self.display_name
+        base["units"] = self.units
+        base["properties"] = self.properties.to_dict(included_prop)
         if self._rooms != []:
-            base['rooms'] = [r.to_dict(True, included_prop, include_plane)
-                             for r in self._rooms]
+            base["rooms"] = [
+                r.to_dict(True, included_prop, include_plane) for r in self._rooms
+            ]
         if self._orphaned_faces != []:
-            base['orphaned_faces'] = [f.to_dict(True, included_prop, include_plane)
-                                      for f in self._orphaned_faces]
+            base["orphaned_faces"] = [
+                f.to_dict(True, included_prop, include_plane)
+                for f in self._orphaned_faces
+            ]
         if self._orphaned_apertures != []:
-            base['orphaned_apertures'] = [ap.to_dict(True, included_prop, include_plane)
-                                          for ap in self._orphaned_apertures]
+            base["orphaned_apertures"] = [
+                ap.to_dict(True, included_prop, include_plane)
+                for ap in self._orphaned_apertures
+            ]
         if self._orphaned_doors != []:
-            base['orphaned_doors'] = [dr.to_dict(True, included_prop, include_plane)
-                                      for dr in self._orphaned_doors]
+            base["orphaned_doors"] = [
+                dr.to_dict(True, included_prop, include_plane)
+                for dr in self._orphaned_doors
+            ]
         if self._orphaned_shades != []:
-            base['orphaned_shades'] = [shd.to_dict(True, included_prop, include_plane)
-                                       for shd in self._orphaned_shades]
+            base["orphaned_shades"] = [
+                shd.to_dict(True, included_prop, include_plane)
+                for shd in self._orphaned_shades
+            ]
         if self._shade_meshes != []:
-            base['shade_meshes'] = [sm.to_dict(True, included_prop)
-                                    for sm in self._shade_meshes]
+            base["shade_meshes"] = [
+                sm.to_dict(True, included_prop) for sm in self._shade_meshes
+            ]
         if self.tolerance != 0:
-            base['tolerance'] = self.tolerance
+            base["tolerance"] = self.tolerance
         if self.angle_tolerance != 0:
-            base['angle_tolerance'] = self.angle_tolerance
+            base["angle_tolerance"] = self.angle_tolerance
 
         # triangulate sub-faces if this was requested
         if triangulate_sub_faces:
             apertures, parents_to_edit = self.triangulated_apertures()
             for tri_aps, edit_infos in zip(apertures, parents_to_edit):
                 if len(edit_infos) == 3:
-                    for room in base['rooms']:
-                        if room['identifier'] == edit_infos[2]:
+                    for room in base["rooms"]:
+                        if room["identifier"] == edit_infos[2]:
                             break
-                    for face in room['faces']:
-                        if face['identifier'] == edit_infos[1]:
+                    for face in room["faces"]:
+                        if face["identifier"] == edit_infos[1]:
                             break
-                    for i, ap in enumerate(face['apertures']):
-                        if ap['identifier'] == edit_infos[0]:
+                    for i, ap in enumerate(face["apertures"]):
+                        if ap["identifier"] == edit_infos[0]:
                             break
-                    del face['apertures'][i]
-                    face['apertures'].extend(
-                        [a.to_dict(True, included_prop) for a in tri_aps])
+                    del face["apertures"][i]
+                    face["apertures"].extend(
+                        [a.to_dict(True, included_prop) for a in tri_aps]
+                    )
             doors, parents_to_edit = self.triangulated_doors()
             for tri_drs, edit_infos in zip(doors, parents_to_edit):
                 if len(edit_infos) == 3:
-                    for room in base['rooms']:
-                        if room['identifier'] == edit_infos[2]:
+                    for room in base["rooms"]:
+                        if room["identifier"] == edit_infos[2]:
                             break
-                    for face in room['faces']:
-                        if face['identifier'] == edit_infos[1]:
+                    for face in room["faces"]:
+                        if face["identifier"] == edit_infos[1]:
                             break
-                    for i, ap in enumerate(face['doors']):
-                        if ap['identifier'] == edit_infos[0]:
+                    for i, ap in enumerate(face["doors"]):
+                        if ap["identifier"] == edit_infos[0]:
                             break
-                    del face['doors'][i]
-                    face['doors'].extend(
-                        [dr.to_dict(True, included_prop) for dr in tri_drs])
+                    del face["doors"][i]
+                    face["doors"].extend(
+                        [dr.to_dict(True, included_prop) for dr in tri_drs]
+                    )
 
         # write in the optional keys if they are not None
         if self.user_data is not None:
-            base['user_data'] = self.user_data
+            base["user_data"] = self.user_data
         if folders.honeybee_schema_version is not None:
-            base['version'] = folders.honeybee_schema_version_str
+            base["version"] = folders.honeybee_schema_version_str
 
         return base
 
-    def to_hbjson(self, name=None, folder=None, indent=None,
-                  included_prop=None, triangulate_sub_faces=False):
+    def to_hbjson(
+        self,
+        name=None,
+        folder=None,
+        indent=None,
+        included_prop=None,
+        triangulate_sub_faces=False,
+    ):
         """Write Honeybee model to HBJSON.
 
         Args:
@@ -3340,23 +3682,28 @@ class Model(_Base):
                 not relevant for energy simulation. (Default: False).
         """
         # create dictionary from the Honeybee Model
-        hb_dict = self.to_dict(included_prop=included_prop,
-                               triangulate_sub_faces=triangulate_sub_faces)
+        hb_dict = self.to_dict(
+            included_prop=included_prop, triangulate_sub_faces=triangulate_sub_faces
+        )
 
         # set up a name and folder for the HBJSON
         if name is None:
             name = self.identifier
-        file_name = name if name.lower().endswith('.hbjson') or \
-            name.lower().endswith('.json') else '{}.hbjson'.format(name)
+        file_name = (
+            name
+            if name.lower().endswith(".hbjson") or name.lower().endswith(".json")
+            else "{}.hbjson".format(name)
+        )
         folder = folder if folder is not None else folders.default_simulation_folder
         hb_file = os.path.join(folder, file_name)
         # write HBJSON
-        with open(hb_file, 'w') as fp:
+        with open(hb_file, "w") as fp:
             json.dump(hb_dict, fp, indent=indent)
         return hb_file
 
-    def to_hbpkl(self, name=None, folder=None, included_prop=None,
-                 triangulate_sub_faces=False):
+    def to_hbpkl(
+        self, name=None, folder=None, included_prop=None, triangulate_sub_faces=False
+    ):
         """Write Honeybee model to compressed pickle file (HBpkl).
 
         Args:
@@ -3379,18 +3726,22 @@ class Model(_Base):
                 not relevant for energy simulation. (Default: False).
         """
         # create dictionary from the Honeybee Model
-        hb_dict = self.to_dict(included_prop=included_prop,
-                               triangulate_sub_faces=triangulate_sub_faces)
+        hb_dict = self.to_dict(
+            included_prop=included_prop, triangulate_sub_faces=triangulate_sub_faces
+        )
 
         # set up a name and folder for the HBpkl
         if name is None:
             name = self.identifier
-        file_name = name if name.lower().endswith('.hbpkl') or \
-            name.lower().endswith('.pkl') else '{}.hbpkl'.format(name)
+        file_name = (
+            name
+            if name.lower().endswith(".hbpkl") or name.lower().endswith(".pkl")
+            else "{}.hbpkl".format(name)
+        )
         folder = folder if folder is not None else folders.default_simulation_folder
         hb_file = os.path.join(folder, file_name)
         # write the Model dictionary into a file
-        with open(hb_file, 'wb') as fp:
+        with open(hb_file, "wb") as fp:
             pickle.dump(hb_dict, fp)
         return hb_file
 
@@ -3409,7 +3760,7 @@ class Model(_Base):
         # set up a name and folder for the STL
         if name is None:
             name = self.identifier
-        file_name = name if name.lower().endswith('.stl') else '{}.stl'.format(name)
+        file_name = name if name.lower().endswith(".stl") else "{}.stl".format(name)
         folder = folder if folder is not None else folders.default_simulation_folder
 
         # collect all of the Face3Ds across the model as triangles and normals
@@ -3448,12 +3799,19 @@ class Model(_Base):
 
     def _all_objects(self):
         """Get a single list of all the Honeybee objects in a Model."""
-        return self._rooms + self._orphaned_faces + self._orphaned_shades + \
-            self._orphaned_apertures + self._orphaned_doors + self._shade_meshes
+        return (
+            self._rooms
+            + self._orphaned_faces
+            + self._orphaned_shades
+            + self._orphaned_apertures
+            + self._orphaned_doors
+            + self._shade_meshes
+        )
 
     @staticmethod
-    def validate(model, check_function='check_for_extension', check_args=None,
-                 json_output=False):
+    def validate(
+        model, check_function="check_for_extension", check_args=None, json_output=False
+    ):
         """Get a string of a validation report given a specific check_function.
 
         Args:
@@ -3473,64 +3831,74 @@ class Model(_Base):
         """
         # first get the function to call on this class
         check_func = getattr(Model, check_function, None)
-        assert check_func is not None, \
-            'Honeybee Model class has no method {}'.format(check_function)
+        assert check_func is not None, "Honeybee Model class has no method {}".format(
+            check_function
+        )
 
         # process the input model if it's not already serialized
-        report = ''
+        report = ""
         if isinstance(model, str):
             try:
-                if model.startswith('{'):
+                if model.startswith("{"):
                     model = Model.from_dict(json.loads(model))
                 elif os.path.isfile(model):
                     model = Model.from_file(model)
                 else:
-                    report = 'Input Model for validation is not a Model object, ' \
-                        'file path to a Model or a Model HBJSON string.'
+                    report = (
+                        "Input Model for validation is not a Model object, "
+                        "file path to a Model or a Model HBJSON string."
+                    )
             except Exception as e:
                 report = str(e)
         elif not isinstance(model, Model):
-            report = 'Input Model for validation is not a Model object, ' \
-                'file path to a Model or a Model HBJSON string.'
+            report = (
+                "Input Model for validation is not a Model object, "
+                "file path to a Model or a Model HBJSON string."
+            )
         # process the arguments and options
         args = [model] if check_args is None else [model] + list(check_args)
-        kwargs = {'raise_exception': False}
+        kwargs = {"raise_exception": False}
 
         # create the report
         if not json_output:  # create a plain text report
             # add the versions of things into the validation message
             c_ver = folders.honeybee_core_version_str
             s_ver = folders.honeybee_schema_version_str
-            ver_msg = 'Validating Model using honeybee-core=={} and ' \
-                'honeybee-schema=={}'.format(c_ver, s_ver)
+            ver_msg = (
+                "Validating Model using honeybee-core=={} and "
+                "honeybee-schema=={}".format(c_ver, s_ver)
+            )
             # run the check function
             if isinstance(args[0], Model):
-                kwargs['detailed'] = False
+                kwargs["detailed"] = False
                 report = check_func(*args, **kwargs)
             # format the results of the check
-            if report == '':
-                full_msg = ver_msg + '\nCongratulations! Your Model is valid!'
+            if report == "":
+                full_msg = ver_msg + "\nCongratulations! Your Model is valid!"
             else:
-                full_msg = ver_msg + \
-                    '\nYour Model is invalid for the following reasons:\n' + report
+                full_msg = (
+                    ver_msg
+                    + "\nYour Model is invalid for the following reasons:\n"
+                    + report
+                )
             return full_msg
         else:
             # add the versions of things into the validation message
             out_dict = {
-                'type': 'ValidationReport',
-                'app_name': 'Honeybee',
-                'app_version': folders.honeybee_core_version_str,
-                'schema_version': folders.honeybee_schema_version_str,
-                'fatal_error': report
+                "type": "ValidationReport",
+                "app_name": "Honeybee",
+                "app_version": folders.honeybee_core_version_str,
+                "schema_version": folders.honeybee_schema_version_str,
+                "fatal_error": report,
             }
-            if report == '':
-                kwargs['detailed'] = True
+            if report == "":
+                kwargs["detailed"] = True
                 errors = check_func(*args, **kwargs)
-                out_dict['errors'] = errors
-                out_dict['valid'] = True if len(out_dict['errors']) == 0 else False
+                out_dict["errors"] = errors
+                out_dict["valid"] = True if len(out_dict["errors"]) == 0 else False
             else:
-                out_dict['errors'] = []
-                out_dict['valid'] = False
+                out_dict["errors"] = []
+                out_dict["valid"] = False
             return json.dumps(out_dict, indent=4)
 
     @staticmethod
@@ -3566,47 +3934,78 @@ class Model(_Base):
         msgs = []
         # first ensure that the object is not referencing itself
         if hb_obj.identifier == bc_obj:
-            parent_msg = 'with parent "{}" '.format(hb_obj._top_parent().full_id) \
-                if hb_obj.has_parent else ''
-            msg = '{} "{}" {}cannot reference itself in its Surface boundary ' \
-                'condition.'.format(obj_type, hb_obj.full_id, parent_msg)
+            parent_msg = (
+                'with parent "{}" '.format(hb_obj._top_parent().full_id)
+                if hb_obj.has_parent
+                else ""
+            )
+            msg = (
+                '{} "{}" {}cannot reference itself in its Surface boundary '
+                "condition.".format(obj_type, hb_obj.full_id, parent_msg)
+            )
             msg = self._validation_message_child(
-                msg, hb_obj, detailed, '000201',
-                error_type='Self-Referential Adjacency')
+                msg, hb_obj, detailed, "000201", error_type="Self-Referential Adjacency"
+            )
             msgs.append(msg)
         # then ensure that the object is not referencing its own room
         if hb_obj.has_parent and hb_obj.parent.has_parent:
             if hb_obj.parent.parent.identifier == bc_room:
-                msg = '{} "{}" and its adjacent object "{}" cannot be a part of the ' \
+                msg = (
+                    '{} "{}" and its adjacent object "{}" cannot be a part of the '
                     'same Room "{}".'.format(obj_type, hb_obj.full_id, bc_obj, bc_room)
+                )
                 msg = self._validation_message_child(
-                    msg, hb_obj, detailed, '000202',
-                    error_type='Intra-Room Adjacency')
+                    msg, hb_obj, detailed, "000202", error_type="Intra-Room Adjacency"
+                )
                 msgs.append(msg)
         # lastly make sure the adjacent object doesn't already have an adjacency
         if bc_obj in bc_set:
-            parent_msg1 = 'with parent "{}" '.format(hb_obj._top_parent().full_id) \
-                if hb_obj.has_parent else ''
-            parent_msg2 = ' with parent "{}" '.format(bc_room) if len(bc_objs) > 1 else ''
-            msg = '{} "{}" {}is adjacent to object "{}"{}, which has another adjacent ' \
-                'object in the Model.'.format(
-                    obj_type, hb_obj.full_id, parent_msg1, bc_obj, parent_msg2)
+            parent_msg1 = (
+                'with parent "{}" '.format(hb_obj._top_parent().full_id)
+                if hb_obj.has_parent
+                else ""
+            )
+            parent_msg2 = (
+                ' with parent "{}" '.format(bc_room) if len(bc_objs) > 1 else ""
+            )
+            msg = (
+                '{} "{}" {}is adjacent to object "{}"{}, which has another adjacent '
+                "object in the Model.".format(
+                    obj_type, hb_obj.full_id, parent_msg1, bc_obj, parent_msg2
+                )
+            )
             msg = self._validation_message_child(
-                msg, hb_obj, detailed, '000203',
-                error_type='Object with Multiple Adjacencies')
+                msg,
+                hb_obj,
+                detailed,
+                "000203",
+                error_type="Object with Multiple Adjacencies",
+            )
             msgs.append(msg)
         else:
             bc_set.add(bc_obj)
-        return msgs if detailed else ''.join(msgs)
+        return msgs if detailed else "".join(msgs)
 
-    def _missing_adj_msg(self, messages, hb_obj, bc_obj,
-                         obj_type='Face', bc_obj_type='Face', detailed=False):
-        parent_msg = 'with parent "{}" '.format(hb_obj._top_parent().full_id) \
-                if hb_obj.has_parent else ''
-        msg = '{} "{}" {}has an adjacent {} that is missing from the model: ' \
-            '{}'.format(obj_type, hb_obj.full_id, parent_msg, bc_obj_type, bc_obj)
+    def _missing_adj_msg(
+        self,
+        messages,
+        hb_obj,
+        bc_obj,
+        obj_type="Face",
+        bc_obj_type="Face",
+        detailed=False,
+    ):
+        parent_msg = (
+            'with parent "{}" '.format(hb_obj._top_parent().full_id)
+            if hb_obj.has_parent
+            else ""
+        )
+        msg = '{} "{}" {}has an adjacent {} that is missing from the model: {}'.format(
+            obj_type, hb_obj.full_id, parent_msg, bc_obj_type, bc_obj
+        )
         msg = self._validation_message_child(
-            msg, hb_obj, detailed, '000204', error_type='Missing Adjacency')
+            msg, hb_obj, detailed, "000204", error_type="Missing Adjacency"
+        )
         if detailed:
             messages.append([msg])
         else:
@@ -3619,7 +4018,7 @@ class Model(_Base):
             id_checking_function(bc_ids)
             return []
         except ValueError as e:
-            id_pattern = re.compile('\"([^"]*)\"')
+            id_pattern = re.compile('"([^"]*)"')
             return [obj_id for obj_id in id_pattern.findall(str(e))]
 
     @staticmethod
@@ -3659,11 +4058,14 @@ class Model(_Base):
             [aperture.duplicate() for aperture in self._orphaned_apertures],
             [door.duplicate() for door in self._orphaned_doors],
             [shade_mesh.duplicate() for shade_mesh in self._shade_meshes],
-            self.units, self.tolerance, self.angle_tolerance)
+            self.units,
+            self.tolerance,
+            self.angle_tolerance,
+        )
         new_model._display_name = self._display_name
         new_model._user_data = None if self.user_data is None else self.user_data.copy()
         new_model._properties._duplicate_extension_attr(self._properties)
         return new_model
 
     def __repr__(self):
-        return 'Model: %s' % self.display_name
+        return "Model: %s" % self.display_name
