@@ -1,5 +1,6 @@
 # coding: utf-8
 """Honeybee Aperture."""
+
 from __future__ import division
 import math
 
@@ -56,20 +57,24 @@ class Aperture(_BaseWithShade):
         * bc_color
         * user_data
     """
-    __slots__ = ('_geometry', '_parent', '_boundary_condition', '_is_operable')
+
+    __slots__ = ("_geometry", "_parent", "_boundary_condition", "_is_operable")
     TYPE_COLOR = Color(64, 180, 255, 100)
     BC_COLORS = {
-        'Outdoors': Color(128, 204, 255, 100),
-        'Surface': Color(0, 190, 0, 100)
+        "Outdoors": Color(128, 204, 255, 100),
+        "Surface": Color(0, 190, 0, 100),
     }
 
-    def __init__(self, identifier, geometry, boundary_condition=None, is_operable=False):
+    def __init__(
+        self, identifier, geometry, boundary_condition=None, is_operable=False
+    ):
         """A single planar aperture in a face."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
 
         # process the geometry
-        assert isinstance(geometry, Face3D), \
-            'Expected ladybug_geometry Face3D. Got {}'.format(type(geometry))
+        assert isinstance(geometry, Face3D), (
+            "Expected ladybug_geometry Face3D. Got {}".format(type(geometry))
+        )
         self._geometry = geometry
         self._parent = None  # _parent will be set when the Aperture is added to a Face
 
@@ -89,37 +94,45 @@ class Aperture(_BaseWithShade):
         """
         try:
             # check the type of dictionary
-            assert data['type'] == 'Aperture', 'Expected Aperture dictionary. ' \
-                'Got {}.'.format(data['type'])
+            assert data["type"] == "Aperture", (
+                "Expected Aperture dictionary. Got {}.".format(data["type"])
+            )
 
             # serialize the aperture
-            is_operable = data['is_operable'] if 'is_operable' in data else False
-            if data['boundary_condition']['type'] == 'Outdoors':
-                boundary_condition = Outdoors.from_dict(data['boundary_condition'])
-            elif data['boundary_condition']['type'] == 'Surface':
-                boundary_condition = Surface.from_dict(data['boundary_condition'], True)
+            is_operable = data["is_operable"] if "is_operable" in data else False
+            if data["boundary_condition"]["type"] == "Outdoors":
+                boundary_condition = Outdoors.from_dict(data["boundary_condition"])
+            elif data["boundary_condition"]["type"] == "Surface":
+                boundary_condition = Surface.from_dict(data["boundary_condition"], True)
             else:
                 raise ValueError(
                     'Boundary condition "{}" is not supported for Apertures.'.format(
-                        data['boundary_condition']['type']))
-            aperture = cls(data['identifier'], Face3D.from_dict(data['geometry']),
-                           boundary_condition, is_operable)
-            if 'display_name' in data and data['display_name'] is not None:
-                aperture.display_name = data['display_name']
-            if 'user_data' in data and data['user_data'] is not None:
-                aperture.user_data = data['user_data']
+                        data["boundary_condition"]["type"]
+                    )
+                )
+            aperture = cls(
+                data["identifier"],
+                Face3D.from_dict(data["geometry"]),
+                boundary_condition,
+                is_operable,
+            )
+            if "display_name" in data and data["display_name"] is not None:
+                aperture.display_name = data["display_name"]
+            if "user_data" in data and data["user_data"] is not None:
+                aperture.user_data = data["user_data"]
             aperture._recover_shades_from_dict(data)
 
             # assign extension properties
-            if data['properties']['type'] == 'ApertureProperties':
-                aperture.properties._load_extension_attr_from_dict(data['properties'])
+            if data["properties"]["type"] == "ApertureProperties":
+                aperture.properties._load_extension_attr_from_dict(data["properties"])
             return aperture
         except Exception as e:
             cls._from_dict_error_message(data, e)
 
     @classmethod
-    def from_vertices(cls, identifier, vertices, boundary_condition=None,
-                      is_operable=False):
+    def from_vertices(
+        cls, identifier, vertices, boundary_condition=None, is_operable=False
+    ):
         """Create an Aperture from vertices with each vertex as an iterable of 3 floats.
 
         Args:
@@ -143,17 +156,20 @@ class Aperture(_BaseWithShade):
     def boundary_condition(self, value):
         if not isinstance(value, Outdoors):
             if isinstance(value, Surface):
-                assert len(value.boundary_condition_objects) == 3, 'Surface boundary ' \
-                    'condition for Aperture must have 3 boundary_condition_objects.'
+                assert len(value.boundary_condition_objects) == 3, (
+                    "Surface boundary "
+                    "condition for Aperture must have 3 boundary_condition_objects."
+                )
             else:
-                raise ValueError('Aperture only supports Outdoor or Surface boundary '
-                                 'condition. Got {}'.format(type(value)))
+                raise ValueError(
+                    "Aperture only supports Outdoor or Surface boundary "
+                    "condition. Got {}".format(type(value))
+                )
         self._boundary_condition = value
 
     @property
     def is_operable(self):
-        """Get or set a boolean for whether the Aperture can be opened for ventilation.
-        """
+        """Get or set a boolean for whether the Aperture can be opened for ventilation."""
         return self._is_operable
 
     @is_operable.setter
@@ -162,11 +178,14 @@ class Aperture(_BaseWithShade):
             self._is_operable = bool(value)
         except TypeError:
             raise TypeError(
-                'Expected boolean for Aperture.is_operable. Got {}.'.format(value))
+                "Expected boolean for Aperture.is_operable. Got {}.".format(value)
+            )
 
     @property
     def parent(self):
         """Get the parent Face if assigned. None if not assigned."""
+        if self.has_parent:
+            assert self._parent
         return self._parent
 
     @property
@@ -218,8 +237,7 @@ class Aperture(_BaseWithShade):
 
     @property
     def normal(self):
-        """Get a ladybug_geometry Vector3D for the direction the aperture is pointing.
-        """
+        """Get a ladybug_geometry Vector3D for the direction the aperture is pointing."""
         return self._geometry.normal
 
     @property
@@ -272,8 +290,7 @@ class Aperture(_BaseWithShade):
 
     @property
     def is_exterior(self):
-        """Get a boolean for whether this object has an Outdoors boundary condition.
-        """
+        """Get a boolean for whether this object has an Outdoors boundary condition."""
         return isinstance(self.boundary_condition, Outdoors)
 
     @property
@@ -296,7 +313,8 @@ class Aperture(_BaseWithShade):
                 Default is the Y-axis (0, 1).
         """
         return math.degrees(
-            north_vector.angle_clockwise(Vector2D(self.normal.x, self.normal.y)))
+            north_vector.angle_clockwise(Vector2D(self.normal.x, self.normal.y))
+        )
 
     def cardinal_direction(self, north_vector=Vector2D(0, 1)):
         """Get text description for the cardinal direction that the aperture is pointing.
@@ -309,8 +327,16 @@ class Aperture(_BaseWithShade):
                 Default is the Y-axis (0, 1).
         """
         orient = self.horizontal_orientation(north_vector)
-        orient_text = ('North', 'NorthEast', 'East', 'SouthEast', 'South',
-                       'SouthWest', 'West', 'NorthWest')
+        orient_text = (
+            "North",
+            "NorthEast",
+            "East",
+            "SouthEast",
+            "South",
+            "SouthWest",
+            "West",
+            "NorthWest",
+        )
         angles = (22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)
         for i, ang in enumerate(angles):
             if orient < ang:
@@ -331,13 +357,15 @@ class Aperture(_BaseWithShade):
                 that this prefix be short to avoid maxing out the 100 allowable
                 characters for honeybee identifiers.
         """
-        self._identifier = clean_string('{}_{}'.format(prefix, self.identifier))
-        self.display_name = '{}_{}'.format(prefix, self.display_name)
+        self._identifier = clean_string("{}_{}".format(prefix, self.identifier))
+        self.display_name = "{}_{}".format(prefix, self.display_name)
         self.properties.add_prefix(prefix)
         self._add_prefix_shades(prefix)
         if isinstance(self._boundary_condition, Surface):
-            new_bc_objs = (clean_string('{}_{}'.format(prefix, adj_name)) for adj_name
-                           in self._boundary_condition._boundary_condition_objects)
+            new_bc_objs = (
+                clean_string("{}_{}".format(prefix, adj_name))
+                for adj_name in self._boundary_condition._boundary_condition_objects
+            )
             self._boundary_condition = Surface(new_bc_objs, True)
 
     def set_adjacency(self, other_aperture):
@@ -352,10 +380,12 @@ class Aperture(_BaseWithShade):
         Args:
             other_aperture: Another Aperture object to be set adjacent to this one.
         """
-        assert isinstance(other_aperture, Aperture), \
-            'Expected Aperture. Got {}.'.format(type(other_aperture))
-        assert other_aperture.is_operable is self.is_operable, \
-            'Adjacent apertures must have matching is_operable properties.'
+        assert isinstance(other_aperture, Aperture), (
+            "Expected Aperture. Got {}.".format(type(other_aperture))
+        )
+        assert other_aperture.is_operable is self.is_operable, (
+            "Adjacent apertures must have matching is_operable properties."
+        )
         self._boundary_condition = boundary_conditions.surface(other_aperture, True)
         other_aperture._boundary_condition = boundary_conditions.surface(self, True)
 
@@ -379,9 +409,15 @@ class Aperture(_BaseWithShade):
             A list of the new Shade objects that have been generated.
         """
         if base_name is None:
-            base_name = 'InOverhang' if indoor else 'OutOverhang'
-        return self.louvers_by_count(1, depth, angle=angle, indoor=indoor,
-                                     tolerance=tolerance, base_name=base_name)
+            base_name = "InOverhang" if indoor else "OutOverhang"
+        return self.louvers_by_count(
+            1,
+            depth,
+            angle=angle,
+            indoor=indoor,
+            tolerance=tolerance,
+            base_name=base_name,
+        )
 
     def right_fin(self, depth, angle=0, indoor=False, tolerance=0.01, base_name=None):
         """Add a single vertical fin on the right side of this Aperture.
@@ -402,10 +438,16 @@ class Aperture(_BaseWithShade):
             A list of the new Shade objects that have been generated.
         """
         if base_name is None:
-            base_name = 'InRightFin' if indoor else 'OutRightFin'
+            base_name = "InRightFin" if indoor else "OutRightFin"
         return self.louvers_by_count(
-            1, depth, angle=angle, contour_vector=Vector2D(1, 0),
-            indoor=indoor, tolerance=tolerance, base_name=base_name)
+            1,
+            depth,
+            angle=angle,
+            contour_vector=Vector2D(1, 0),
+            indoor=indoor,
+            tolerance=tolerance,
+            base_name=base_name,
+        )
 
     def left_fin(self, depth, angle=0, indoor=False, tolerance=0.01, base_name=None):
         """Add a single vertical fin on the left side of this Aperture.
@@ -426,11 +468,17 @@ class Aperture(_BaseWithShade):
             A list of the new Shade objects that have been generated.
         """
         if base_name is None:
-            base_name = 'InLeftFin' if indoor else 'OutLeftFin'
+            base_name = "InLeftFin" if indoor else "OutLeftFin"
         return self.louvers_by_count(
-            1, depth, angle=angle, contour_vector=Vector2D(1, 0),
-            flip_start_side=True, indoor=indoor, tolerance=tolerance,
-            base_name=base_name)
+            1,
+            depth,
+            angle=angle,
+            contour_vector=Vector2D(1, 0),
+            flip_start_side=True,
+            indoor=indoor,
+            tolerance=tolerance,
+            base_name=base_name,
+        )
 
     def extruded_border(self, depth, indoor=False, base_name=None):
         """Add a series of Shade objects to this Aperture that form an extruded border.
@@ -451,21 +499,24 @@ class Aperture(_BaseWithShade):
         extrusion = []
         shd_count = 0
         if base_name is None:
-            shd_name_base = '{}_InBorder{}' if indoor else '{}_OutBorder{}'
+            shd_name_base = "{}_InBorder{}" if indoor else "{}_OutBorder{}"
         else:
-            shd_name_base = '{}_' + str(base_name) + '{}'
+            shd_name_base = "{}_" + str(base_name) + "{}"
         for seg in self.geometry.boundary_segments:
             shade_geo = Face3D.from_extrusion(seg, extru_vec)
             extrusion.append(
-                Shade(shd_name_base.format(self.identifier, shd_count), shade_geo))
+                Shade(shd_name_base.format(self.identifier, shd_count), shade_geo)
+            )
             shd_count += 1
         if self.geometry.has_holes:
             for hole in self.geometry.hole_segments:
                 for seg in hole:
                     shade_geo = Face3D.from_extrusion(seg, extru_vec)
                     extrusion.append(
-                        Shade(shd_name_base.format(self.identifier, shd_count),
-                              shade_geo))
+                        Shade(
+                            shd_name_base.format(self.identifier, shd_count), shade_geo
+                        )
+                    )
                     shd_count += 1
         if indoor:
             self.add_indoor_shades(extrusion)
@@ -473,9 +524,19 @@ class Aperture(_BaseWithShade):
             self.add_outdoor_shades(extrusion)
         return extrusion
 
-    def louvers(self, depth, louver_count=None, distance=None, offset=0, angle=0,
-                contour_vector=Vector2D(0, 1), flip_start_side=False,
-                indoor=False, tolerance=0.01, base_name=None):
+    def louvers(
+        self,
+        depth,
+        louver_count=None,
+        distance=None,
+        offset=0,
+        angle=0,
+        contour_vector=Vector2D(0, 1),
+        flip_start_side=False,
+        indoor=False,
+        tolerance=0.01,
+        base_name=None,
+    ):
         """Add a series of louvered Shade objects over this Aperture.
 
         If both louver_count and distance are None, this method will add a
@@ -517,20 +578,54 @@ class Aperture(_BaseWithShade):
             return []
         elif louver_count is None and distance is None:
             return self.louvers_by_count(
-                1, depth, offset, angle, contour_vector, flip_start_side, indoor,
-                tolerance=tolerance, base_name=base_name)
+                1,
+                depth,
+                offset,
+                angle,
+                contour_vector,
+                flip_start_side,
+                indoor,
+                tolerance=tolerance,
+                base_name=base_name,
+            )
         elif distance is None:
             return self.louvers_by_count(
-                louver_count, depth, offset, angle, contour_vector,
-                flip_start_side, indoor, tolerance=tolerance, base_name=base_name)
+                louver_count,
+                depth,
+                offset,
+                angle,
+                contour_vector,
+                flip_start_side,
+                indoor,
+                tolerance=tolerance,
+                base_name=base_name,
+            )
         else:
             return self.louvers_by_distance_between(
-                distance, depth, offset, angle, contour_vector, flip_start_side, indoor,
-                tolerance=tolerance, max_count=louver_count, base_name=base_name)
+                distance,
+                depth,
+                offset,
+                angle,
+                contour_vector,
+                flip_start_side,
+                indoor,
+                tolerance=tolerance,
+                max_count=louver_count,
+                base_name=base_name,
+            )
 
-    def louvers_by_count(self, louver_count, depth, offset=0, angle=0,
-                         contour_vector=Vector2D(0, 1), flip_start_side=False,
-                         indoor=False, tolerance=0.01, base_name=None):
+    def louvers_by_count(
+        self,
+        louver_count,
+        depth,
+        offset=0,
+        angle=0,
+        contour_vector=Vector2D(0, 1),
+        flip_start_side=False,
+        indoor=False,
+        tolerance=0.01,
+        base_name=None,
+    ):
         """Add louvered Shade objects over this Aperture to hit a target louver_count.
 
         Args:
@@ -560,17 +655,23 @@ class Aperture(_BaseWithShade):
         Returns:
             A list of the new Shade objects that have been generated.
         """
-        assert louver_count > 0, 'louver_count must be greater than 0.'
+        assert louver_count > 0, "louver_count must be greater than 0."
         angle = math.radians(angle)
         louvers = []
         ap_geo = self.geometry if indoor is False else self.geometry.flip()
         shade_faces = ap_geo.contour_fins_by_number(
-            louver_count, depth, offset, angle,
-            contour_vector, flip_start_side, tolerance)
+            louver_count,
+            depth,
+            offset,
+            angle,
+            contour_vector,
+            flip_start_side,
+            tolerance,
+        )
         if base_name is None:
-            shd_name_base = '{}_InShd{}' if indoor else '{}_OutShd{}'
+            shd_name_base = "{}_InShd{}" if indoor else "{}_OutShd{}"
         else:
-            shd_name_base = '{}_' + str(base_name) + '{}'
+            shd_name_base = "{}_" + str(base_name) + "{}"
         for i, shade_geo in enumerate(shade_faces):
             louvers.append(Shade(shd_name_base.format(self.identifier, i), shade_geo))
         if indoor:
@@ -580,9 +681,18 @@ class Aperture(_BaseWithShade):
         return louvers
 
     def louvers_by_distance_between(
-            self, distance, depth, offset=0, angle=0, contour_vector=Vector2D(0, 1),
-            flip_start_side=False, indoor=False, tolerance=0.01, max_count=None,
-            base_name=None):
+        self,
+        distance,
+        depth,
+        offset=0,
+        angle=0,
+        contour_vector=Vector2D(0, 1),
+        flip_start_side=False,
+        indoor=False,
+        tolerance=0.01,
+        max_count=None,
+        base_name=None,
+    ):
         """Add louvered Shades over this Aperture to hit a target distance between.
 
         Args:
@@ -619,14 +729,14 @@ class Aperture(_BaseWithShade):
         angle = math.radians(angle)
         ap_geo = self.geometry if indoor is False else self.geometry.flip()
         if base_name is None:
-            shd_name_base = '{}_InShd{}' if indoor else '{}_OutShd{}'
+            shd_name_base = "{}_InShd{}" if indoor else "{}_OutShd{}"
         else:
-            shd_name_base = '{}_' + str(base_name) + '{}'
+            shd_name_base = "{}_" + str(base_name) + "{}"
 
         # generate shade geometries
         shade_faces = ap_geo.contour_fins_by_distance_between(
-            distance, depth, offset, angle,
-            contour_vector, flip_start_side, tolerance)
+            distance, depth, offset, angle, contour_vector, flip_start_side, tolerance
+        )
         if max_count:
             try:
                 shade_faces = shade_faces[:max_count]
@@ -722,7 +832,8 @@ class Aperture(_BaseWithShade):
         except AssertionError as e:  # usually a sliver face of some kind
             raise ValueError(
                 'Aperture "{}" is invalid with dimensions less than the '
-                'tolerance.\n{}'.format(self.full_id, e))
+                "tolerance.\n{}".format(self.full_id, e)
+            )
 
     def is_geo_equivalent(self, aperture, tolerance=0.01):
         """Get a boolean for whether this object is geometrically equivalent to another.
@@ -740,8 +851,11 @@ class Aperture(_BaseWithShade):
             True if geometrically equivalent. False if not geometrically equivalent.
         """
         meta_1 = (self.display_name, self.is_operable, self.boundary_condition)
-        meta_2 = (aperture.display_name, aperture.is_operable,
-                  aperture.boundary_condition)
+        meta_2 = (
+            aperture.display_name,
+            aperture.is_operable,
+            aperture.boundary_condition,
+        )
         if meta_1 != meta_2:
             return False
         if abs(self.area - aperture.area) > tolerance * self.area:
@@ -772,18 +886,23 @@ class Aperture(_BaseWithShade):
         except ValueError as e:
             msg = 'Aperture "{}" is not planar.\n{}'.format(self.full_id, e)
             full_msg = self._validation_message(
-                msg, raise_exception, detailed, '000101',
-                error_type='Non-Planar Geometry')
+                msg,
+                raise_exception,
+                detailed,
+                "000101",
+                error_type="Non-Planar Geometry",
+            )
             if detailed:  # add the out-of-plane points to helper_geometry
                 help_pts = [
                     p.to_dict() for p in self.geometry.non_planar_vertices(tolerance)
                 ]
-                full_msg[0]['helper_geometry'] = help_pts
+                full_msg[0]["helper_geometry"] = help_pts
             return full_msg
-        return [] if detailed else ''
+        return [] if detailed else ""
 
-    def check_self_intersecting(self, tolerance=0.01, raise_exception=True,
-                                detailed=False):
+    def check_self_intersecting(
+        self, tolerance=0.01, raise_exception=True, detailed=False
+    ):
         """Check whether the edges of the Aperture intersect one another (like a bowtie).
 
         Note that objects that have duplicate vertices will not be considered
@@ -806,17 +925,21 @@ class Aperture(_BaseWithShade):
             try:  # see if it is self-intersecting because of a duplicate vertex
                 new_geo = self.geometry.remove_duplicate_vertices(tolerance)
                 if not new_geo.is_self_intersecting:
-                    return [] if detailed else ''  # valid with removed dup vertex
+                    return [] if detailed else ""  # valid with removed dup vertex
             except AssertionError:
-                return [] if detailed else ''  # degenerate geometry
+                return [] if detailed else ""  # degenerate geometry
             full_msg = self._validation_message(
-                msg, raise_exception, detailed, '000102',
-                error_type='Self-Intersecting Geometry')
+                msg,
+                raise_exception,
+                detailed,
+                "000102",
+                error_type="Self-Intersecting Geometry",
+            )
             if detailed:  # add the self-intersection points to helper_geometry
                 help_pts = [p.to_dict() for p in self.geometry.self_intersection_points]
-                full_msg[0]['helper_geometry'] = help_pts
+                full_msg[0]["helper_geometry"] = help_pts
             return full_msg
-        return [] if detailed else ''
+        return [] if detailed else ""
 
     def display_dict(self):
         """Get a list of DisplayFace3D dictionaries for visualizing the object."""
@@ -856,21 +979,23 @@ class Aperture(_BaseWithShade):
                 X/Y axes of the plane but is not required and can be removed to
                 keep the dictionary smaller. (Default: True).
         """
-        base = {'type': 'Aperture'}
-        base['identifier'] = self.identifier
-        base['display_name'] = self.display_name
-        base['properties'] = self.properties.to_dict(abridged, included_prop)
-        enforce_upper_left = True if 'energy' in base['properties'] else False
-        base['geometry'] = self._geometry.to_dict(include_plane, enforce_upper_left)
-        base['is_operable'] = self.is_operable
-        if isinstance(self.boundary_condition, Outdoors) and \
-                'energy' in base['properties']:
-            base['boundary_condition'] = self.boundary_condition.to_dict(full=True)
+        base = {"type": "Aperture"}
+        base["identifier"] = self.identifier
+        base["display_name"] = self.display_name
+        base["properties"] = self.properties.to_dict(abridged, included_prop)
+        enforce_upper_left = True if "energy" in base["properties"] else False
+        base["geometry"] = self._geometry.to_dict(include_plane, enforce_upper_left)
+        base["is_operable"] = self.is_operable
+        if (
+            isinstance(self.boundary_condition, Outdoors)
+            and "energy" in base["properties"]
+        ):
+            base["boundary_condition"] = self.boundary_condition.to_dict(full=True)
         else:
-            base['boundary_condition'] = self.boundary_condition.to_dict()
+            base["boundary_condition"] = self.boundary_condition.to_dict()
         self._add_shades_to_dict(base, abridged, included_prop, include_plane)
         if self.user_data is not None:
-            base['user_data'] = self.user_data
+            base["user_data"] = self.user_data
         return base
 
     def _reset_parent_geometry(self):
@@ -879,8 +1004,9 @@ class Aperture(_BaseWithShade):
             self._parent._punched_geometry = None
 
     def __copy__(self):
-        new_ap = Aperture(self.identifier, self.geometry, self.boundary_condition,
-                          self.is_operable)
+        new_ap = Aperture(
+            self.identifier, self.geometry, self.boundary_condition, self.is_operable
+        )
         new_ap._display_name = self._display_name
         new_ap._user_data = None if self.user_data is None else self.user_data.copy()
         self._duplicate_child_shades(new_ap)
@@ -888,4 +1014,4 @@ class Aperture(_BaseWithShade):
         return new_ap
 
     def __repr__(self):
-        return 'Aperture: %s' % self.display_name
+        return "Aperture: %s" % self.display_name

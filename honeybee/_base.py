@@ -1,8 +1,11 @@
 # coding: utf-8
 """Base class for all geometry objects."""
+
 from ladybug_geometry.geometry3d.pointvector import Point3D
 
 from .typing import valid_string
+
+from honeybee.properties import ModelProperties
 
 
 class _Base(object):
@@ -18,7 +21,8 @@ class _Base(object):
         * full_id
         * user_data
     """
-    __slots__ = ('_identifier', '_display_name', '_properties', '_user_data')
+
+    __slots__ = ("_identifier", "_display_name", "_properties", "_user_data")
 
     def __init__(self, identifier):
         """Initialize base object."""
@@ -39,7 +43,7 @@ class _Base(object):
 
     @identifier.setter
     def identifier(self, value):
-        self._identifier = valid_string(value, 'honeybee object identifier')
+        self._identifier = valid_string(value, "honeybee object identifier")
 
     @property
     def display_name(self):
@@ -73,12 +77,19 @@ class _Base(object):
         if self._display_name is None:
             return self._identifier
         else:
-            return '{}[{}]'.format(self._display_name, self._identifier)
+            return "{}[{}]".format(self._display_name, self._identifier)
 
     @property
     def properties(self):
         """Get object properties, including Radiance, Energy and other properties."""
+        assert (
+            self._properties is not None
+        )  # properties should be assigned before trying to access it, right? -A.A
         return self._properties
+
+    @properties.setter
+    def properties(self, value: ModelProperties):
+        self._properties = value
 
     @property
     def user_data(self):
@@ -93,8 +104,11 @@ class _Base(object):
     @user_data.setter
     def user_data(self, value):
         if value is not None:
-            assert isinstance(value, dict), 'Expected dictionary for honeybee ' \
-                'object user_data. Got {}.'.format(type(value))
+            assert isinstance(value, dict), (
+                "Expected dictionary for honeybee object user_data. Got {}.".format(
+                    type(value)
+                )
+            )
         self._user_data = value
 
     def duplicate(self):
@@ -124,35 +138,40 @@ class _Base(object):
             return None
         # establish the base dictionary
         base_dict = {
-            'type': 'ChangedObject',
-            'element_type': self.__class__.__name__,
-            'element_id': self.identifier,
-            'element_name': self.display_name,
-            'geometry_changed': geo_changed
+            "type": "ChangedObject",
+            "element_type": self.__class__.__name__,
+            "element_id": self.identifier,
+            "element_name": self.display_name,
+            "geometry_changed": geo_changed,
         }
         # add booleans for whether metadata changed
         for atr, equiv in meta_changed.items():
-            base_dict['{}_changed'.format(atr)] = not equiv
+            base_dict["{}_changed".format(atr)] = not equiv
         # add a representation of the geometry if it has changed
-        base_dict['geometry'] = other_object.display_dict()
+        base_dict["geometry"] = other_object.display_dict()
         if geo_changed:
-            base_dict['existing_geometry'] = self.display_dict()
+            base_dict["existing_geometry"] = self.display_dict()
         return base_dict
 
-    def _base_report_dict(self, dict_type='AddedObject'):
-        """Get a dictionary reporting the object as an addition/deletion to/from a Model.
-        """
+    def _base_report_dict(self, dict_type="AddedObject"):
+        """Get a dictionary reporting the object as an addition/deletion to/from a Model."""
         return {
-            'type': dict_type,
-            'element_type': self.__class__.__name__,
-            'element_id': self.identifier,
-            'element_name': self.display_name,
-            'geometry': self.display_dict()
+            "type": dict_type,
+            "element_type": self.__class__.__name__,
+            "element_id": self.identifier,
+            "element_name": self.display_name,
+            "geometry": self.display_dict(),
         }
 
     def _validation_message(
-            self, message, raise_exception=True, detailed=False,
-            code='000000', extension='Core', error_type='Unknown Error'):
+        self,
+        message,
+        raise_exception=True,
+        detailed=False,
+        code="000000",
+        extension="Core",
+        error_type="Unknown Error",
+    ):
         """Handle a validation error message given various options.
 
         Args:
@@ -178,42 +197,47 @@ class _Base(object):
             return message
         # if not, then assemble a dictionary with detailed error information
         error_dict = {
-            'type': 'ValidationError',
-            'code': code,
-            'error_type': error_type,
-            'extension_type': extension,
-            'element_type': self.__class__.__name__,
-            'element_id': [self.identifier],
-            'element_name': [self.display_name],
-            'message': message
+            "type": "ValidationError",
+            "code": code,
+            "error_type": error_type,
+            "extension_type": extension,
+            "element_type": self.__class__.__name__,
+            "element_id": [self.identifier],
+            "element_name": [self.display_name],
+            "message": message,
         }
         # add parents to the error dictionary if they exist
-        if getattr(self, '_parent', None) is not None:
+        if getattr(self, "_parent", None) is not None:
             parents = []
             rel_obj = self
-            while getattr(rel_obj, '_parent', None) is not None:
-                rel_obj = getattr(rel_obj, '_parent')
+            while getattr(rel_obj, "_parent", None) is not None:
+                rel_obj = getattr(rel_obj, "_parent")
                 par_dict = {
-                    'parent_type': rel_obj.__class__.__name__,
-                    'id': rel_obj.identifier,
-                    'name': rel_obj.display_name
+                    "parent_type": rel_obj.__class__.__name__,
+                    "id": rel_obj.identifier,
+                    "name": rel_obj.display_name,
                 }
                 parents.append(par_dict)
-            error_dict['parents'] = [parents]
+            error_dict["parents"] = [parents]
         return [error_dict]
 
     def _top_parent(self):
         """Get the highest parent object that this object is a part of."""
-        if getattr(self, '_parent', None) is not None:
+        if getattr(self, "_parent", None) is not None:
             rel_obj = self
-            while getattr(rel_obj, '_parent', None) is not None:
-                rel_obj = getattr(rel_obj, '_parent')
+            while getattr(rel_obj, "_parent", None) is not None:
+                rel_obj = getattr(rel_obj, "_parent")
             return rel_obj
 
     @staticmethod
     def _validation_message_child(
-            message, child_obj, detailed=False, code='000000', extension='Core',
-            error_type='Unknown Error'):
+        message,
+        child_obj,
+        detailed=False,
+        code="000000",
+        extension="Core",
+        error_type="Unknown Error",
+    ):
         """Process a validation error message of a child object.
 
         Args:
@@ -236,27 +260,27 @@ class _Base(object):
             return message
         # if not, then assemble a dictionary with detailed error information
         error_dict = {
-            'type': 'ValidationError',
-            'code': code,
-            'error_type': error_type,
-            'extension_type': extension,
-            'element_type': child_obj.__class__.__name__,
-            'element_id': [child_obj.identifier],
-            'element_name': [child_obj.display_name],
-            'message': message
+            "type": "ValidationError",
+            "code": code,
+            "error_type": error_type,
+            "extension_type": extension,
+            "element_type": child_obj.__class__.__name__,
+            "element_id": [child_obj.identifier],
+            "element_name": [child_obj.display_name],
+            "message": message,
         }
         # add parents to the error dictionary
         parents = []
         rel_obj = child_obj
-        while getattr(rel_obj, '_parent', None) is not None:
-            rel_obj = getattr(rel_obj, '_parent')
+        while getattr(rel_obj, "_parent", None) is not None:
+            rel_obj = getattr(rel_obj, "_parent")
             par_dict = {
-                'parent_type': rel_obj.__class__.__name__,
-                'id': rel_obj.identifier,
-                'name': rel_obj.display_name
+                "parent_type": rel_obj.__class__.__name__,
+                "id": rel_obj.identifier,
+                "name": rel_obj.display_name,
             }
             parents.append(par_dict)
-        error_dict['parents'] = [parents]
+        error_dict["parents"] = [parents]
         return error_dict
 
     @staticmethod
@@ -269,24 +293,27 @@ class _Base(object):
             obj_dict: The objection dictionary that failed serialization.
             exception_obj: The exception object to be included in the message.
         """
-        obj_name = obj_dict['type'] if 'type' in obj_dict else 'Honeybee object'
-        full_id = ''
-        if 'identifier' in obj_dict and obj_dict['identifier'] is not None:
-            full_id = '{}[{}]'.format(obj_dict['display_name'], obj_dict['identifier']) \
-                if 'display_name' in obj_dict and obj_dict['display_name'] is not None \
-                else obj_dict['identifier']
+        obj_name = obj_dict["type"] if "type" in obj_dict else "Honeybee object"
+        full_id = ""
+        if "identifier" in obj_dict and obj_dict["identifier"] is not None:
+            full_id = (
+                "{}[{}]".format(obj_dict["display_name"], obj_dict["identifier"])
+                if "display_name" in obj_dict and obj_dict["display_name"] is not None
+                else obj_dict["identifier"]
+            )
         msg = '{} "{}" is not valid and is not following honeybee-schema:\n{}'.format(
-            obj_name, full_id, exception_obj)
+            obj_name, full_id, exception_obj
+        )
         raise ValueError(msg)
 
     @staticmethod
     def _display_face(face3d, color):
         """Create a DisplayFace3D dictionary from a Face3D and color."""
         return {
-            'type': 'DisplayFace3D',
-            'geometry': face3d.to_dict(),
-            'color': color.to_dict(),
-            'display_mode': 'SurfaceWithEdges'
+            "type": "DisplayFace3D",
+            "geometry": face3d.to_dict(),
+            "color": color.to_dict(),
+            "display_mode": "SurfaceWithEdges",
         }
 
     @staticmethod
@@ -328,4 +355,4 @@ class _Base(object):
         return self.__repr__()
 
     def __repr__(self):
-        return 'Honeybee Base Object: %s' % self.display_name
+        return "Honeybee Base Object: %s" % self.display_name

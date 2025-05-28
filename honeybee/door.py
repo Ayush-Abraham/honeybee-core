@@ -1,7 +1,9 @@
 # coding: utf-8
 """Honeybee Door."""
+
 from __future__ import division
 import math
+from typing import TYPE_CHECKING
 
 from ladybug_geometry.geometry2d.pointvector import Vector2D
 from ladybug_geometry.geometry3d.pointvector import Point3D
@@ -14,6 +16,9 @@ from .properties import DoorProperties
 from .boundarycondition import boundary_conditions, Outdoors, Surface
 from .shade import Shade
 import honeybee.writer.door as writer
+
+if TYPE_CHECKING:
+    from honeybee.face import Face
 
 
 class Door(_BaseWithShade):
@@ -56,25 +61,23 @@ class Door(_BaseWithShade):
         * bc_color
         * user_data
     """
-    __slots__ = ('_geometry', '_parent', '_boundary_condition', '_is_glass')
-    TYPE_COLORS = {
-        False: Color(160, 150, 100),
-        True: Color(128, 204, 255, 100)
-    }
-    BC_COLORS = {
-        'Outdoors': Color(128, 204, 255),
-        'Surface': Color(0, 190, 0)
-    }
+
+    __slots__ = ("_geometry", "_parent", "_boundary_condition", "_is_glass")
+    TYPE_COLORS = {False: Color(160, 150, 100), True: Color(128, 204, 255, 100)}
+    BC_COLORS = {"Outdoors": Color(128, 204, 255), "Surface": Color(0, 190, 0)}
 
     def __init__(self, identifier, geometry, boundary_condition=None, is_glass=False):
         """A single planar Door in a Face."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
 
         # process the geometry
-        assert isinstance(geometry, Face3D), \
-            'Expected ladybug_geometry Face3D. Got {}'.format(type(geometry))
+        assert isinstance(geometry, Face3D), (
+            "Expected ladybug_geometry Face3D. Got {}".format(type(geometry))
+        )
         self._geometry = geometry
-        self._parent = None  # _parent will be set when the Face is added to a Face
+        self._parent: Face | None = (
+            None  # _parent will be set when the Face is added to a Face
+        )
 
         # process the boundary condition and type
         self.boundary_condition = boundary_condition or boundary_conditions.outdoors
@@ -92,37 +95,45 @@ class Door(_BaseWithShade):
         """
         try:
             # check the type of dictionary
-            assert data['type'] == 'Door', 'Expected Door dictionary. ' \
-                'Got {}.'.format(data['type'])
+            assert data["type"] == "Door", "Expected Door dictionary. Got {}.".format(
+                data["type"]
+            )
 
             # serialize the door
-            is_glass = data['is_glass'] if 'is_glass' in data else False
-            if data['boundary_condition']['type'] == 'Outdoors':
-                boundary_condition = Outdoors.from_dict(data['boundary_condition'])
-            elif data['boundary_condition']['type'] == 'Surface':
-                boundary_condition = Surface.from_dict(data['boundary_condition'], True)
+            is_glass = data["is_glass"] if "is_glass" in data else False
+            if data["boundary_condition"]["type"] == "Outdoors":
+                boundary_condition = Outdoors.from_dict(data["boundary_condition"])
+            elif data["boundary_condition"]["type"] == "Surface":
+                boundary_condition = Surface.from_dict(data["boundary_condition"], True)
             else:
                 raise ValueError(
                     'Boundary condition "{}" is not supported for Door.'.format(
-                        data['boundary_condition']['type']))
-            door = cls(data['identifier'], Face3D.from_dict(data['geometry']),
-                       boundary_condition, is_glass)
-            if 'display_name' in data and data['display_name'] is not None:
-                door.display_name = data['display_name']
-            if 'user_data' in data and data['user_data'] is not None:
-                door.user_data = data['user_data']
+                        data["boundary_condition"]["type"]
+                    )
+                )
+            door = cls(
+                data["identifier"],
+                Face3D.from_dict(data["geometry"]),
+                boundary_condition,
+                is_glass,
+            )
+            if "display_name" in data and data["display_name"] is not None:
+                door.display_name = data["display_name"]
+            if "user_data" in data and data["user_data"] is not None:
+                door.user_data = data["user_data"]
             door._recover_shades_from_dict(data)
 
             # assign extension properties
-            if data['properties']['type'] == 'DoorProperties':
-                door.properties._load_extension_attr_from_dict(data['properties'])
+            if data["properties"]["type"] == "DoorProperties":
+                door.properties._load_extension_attr_from_dict(data["properties"])
             return door
         except Exception as e:
             cls._from_dict_error_message(data, e)
 
     @classmethod
-    def from_vertices(cls, identifier, vertices, boundary_condition=None,
-                      is_glass=False):
+    def from_vertices(
+        cls, identifier, vertices, boundary_condition=None, is_glass=False
+    ):
         """Create a Door from vertices with each vertex as an iterable of 3 floats.
 
         Args:
@@ -146,11 +157,15 @@ class Door(_BaseWithShade):
     def boundary_condition(self, value):
         if not isinstance(value, Outdoors):
             if isinstance(value, Surface):
-                assert len(value.boundary_condition_objects) == 3, 'Surface boundary ' \
-                    'condition for Door must have 3 boundary_condition_objects.'
+                assert len(value.boundary_condition_objects) == 3, (
+                    "Surface boundary "
+                    "condition for Door must have 3 boundary_condition_objects."
+                )
             else:
-                raise ValueError('Door only supports Outdoor or Surface boundary '
-                                 'condition. Got {}'.format(type(value)))
+                raise ValueError(
+                    "Door only supports Outdoor or Surface boundary "
+                    "condition. Got {}".format(type(value))
+                )
         self._boundary_condition = value
 
     @property
@@ -163,8 +178,7 @@ class Door(_BaseWithShade):
         try:
             self._is_glass = bool(value)
         except TypeError:
-            raise TypeError(
-                'Expected boolean for Door.is_glass. Got {}.'.format(value))
+            raise TypeError("Expected boolean for Door.is_glass. Got {}.".format(value))
 
     @property
     def parent(self):
@@ -220,8 +234,7 @@ class Door(_BaseWithShade):
 
     @property
     def normal(self):
-        """Get a ladybug_geometry Vector3D for the direction the door is pointing.
-        """
+        """Get a ladybug_geometry Vector3D for the direction the door is pointing."""
         return self._geometry.normal
 
     @property
@@ -274,8 +287,7 @@ class Door(_BaseWithShade):
 
     @property
     def is_exterior(self):
-        """Get a boolean for whether this object has an Outdoors boundary condition.
-        """
+        """Get a boolean for whether this object has an Outdoors boundary condition."""
         return isinstance(self.boundary_condition, Outdoors)
 
     @property
@@ -298,7 +310,8 @@ class Door(_BaseWithShade):
                 Default is the Y-axis (0, 1).
         """
         return math.degrees(
-            north_vector.angle_clockwise(Vector2D(self.normal.x, self.normal.y)))
+            north_vector.angle_clockwise(Vector2D(self.normal.x, self.normal.y))
+        )
 
     def cardinal_direction(self, north_vector=Vector2D(0, 1)):
         """Get text description for the cardinal direction that the door is pointing.
@@ -311,8 +324,16 @@ class Door(_BaseWithShade):
                 Default is the Y-axis (0, 1).
         """
         orient = self.horizontal_orientation(north_vector)
-        orient_text = ('North', 'NorthEast', 'East', 'SouthEast', 'South',
-                       'SouthWest', 'West', 'NorthWest')
+        orient_text = (
+            "North",
+            "NorthEast",
+            "East",
+            "SouthEast",
+            "South",
+            "SouthWest",
+            "West",
+            "NorthWest",
+        )
         angles = (22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)
         for i, ang in enumerate(angles):
             if orient < ang:
@@ -333,13 +354,15 @@ class Door(_BaseWithShade):
                 that this prefix be short to avoid maxing out the 100 allowable
                 characters for honeybee identifiers.
         """
-        self._identifier = clean_string('{}_{}'.format(prefix, self.identifier))
-        self.display_name = '{}_{}'.format(prefix, self.display_name)
+        self._identifier = clean_string("{}_{}".format(prefix, self.identifier))
+        self.display_name = "{}_{}".format(prefix, self.display_name)
         self.properties.add_prefix(prefix)
         self._add_prefix_shades(prefix)
         if isinstance(self._boundary_condition, Surface):
-            new_bc_objs = (clean_string('{}_{}'.format(prefix, adj_name)) for adj_name
-                           in self._boundary_condition._boundary_condition_objects)
+            new_bc_objs = (
+                clean_string("{}_{}".format(prefix, adj_name))
+                for adj_name in self._boundary_condition._boundary_condition_objects
+            )
             self._boundary_condition = Surface(new_bc_objs, True)
 
     def set_adjacency(self, other_door):
@@ -354,10 +377,12 @@ class Door(_BaseWithShade):
         Args:
             other_door: Another Door object to be set adjacent to this one.
         """
-        assert isinstance(other_door, Door), \
-            'Expected Door. Got {}.'.format(type(other_door))
-        assert other_door.is_glass is self.is_glass, \
-            'Adjacent doors must have matching is_glass properties.'
+        assert isinstance(other_door, Door), "Expected Door. Got {}.".format(
+            type(other_door)
+        )
+        assert other_door.is_glass is self.is_glass, (
+            "Adjacent doors must have matching is_glass properties."
+        )
         self._boundary_condition = boundary_conditions.surface(other_door, True)
         other_door._boundary_condition = boundary_conditions.surface(self, True)
 
@@ -382,14 +407,15 @@ class Door(_BaseWithShade):
         """
         # get a name for the shade
         if base_name is None:
-            base_name = 'InOverhang' if indoor else 'OutOverhang'
-        shd_name_base = '{}_' + str(base_name) + '{}'
+            base_name = "InOverhang" if indoor else "OutOverhang"
+        shd_name_base = "{}_" + str(base_name) + "{}"
 
         # create the shade geometry
         angle = math.radians(angle)
         dr_geo = self.geometry if indoor is False else self.geometry.flip()
         shade_faces = dr_geo.contour_fins_by_number(
-            1, depth, 0, angle, Vector2D(0, 1), False, tolerance)
+            1, depth, 0, angle, Vector2D(0, 1), False, tolerance
+        )
 
         # create the Shade objects
         overhang = []
@@ -480,7 +506,8 @@ class Door(_BaseWithShade):
         except AssertionError as e:  # usually a sliver face of some kind
             raise ValueError(
                 'Door "{}" is invalid with dimensions less than the '
-                'tolerance.\n{}'.format(self.full_id, e))
+                "tolerance.\n{}".format(self.full_id, e)
+            )
 
     def is_geo_equivalent(self, door, tolerance=0.01):
         """Get a boolean for whether this object is geometrically equivalent to another.
@@ -529,18 +556,23 @@ class Door(_BaseWithShade):
         except ValueError as e:
             msg = 'Door "{}" is not planar.\n{}'.format(self.full_id, e)
             full_msg = self._validation_message(
-                msg, raise_exception, detailed, '000101',
-                error_type='Non-Planar Geometry')
+                msg,
+                raise_exception,
+                detailed,
+                "000101",
+                error_type="Non-Planar Geometry",
+            )
             if detailed:  # add the out-of-plane points to helper_geometry
                 help_pts = [
                     p.to_dict() for p in self.geometry.non_planar_vertices(tolerance)
                 ]
-                full_msg[0]['helper_geometry'] = help_pts
+                full_msg[0]["helper_geometry"] = help_pts
             return full_msg
-        return [] if detailed else ''
+        return [] if detailed else ""
 
-    def check_self_intersecting(self, tolerance=0.01, raise_exception=True,
-                                detailed=False):
+    def check_self_intersecting(
+        self, tolerance=0.01, raise_exception=True, detailed=False
+    ):
         """Check whether the edges of the Door intersect one another (like a bowtie).
 
         Note that objects that have duplicate vertices will not be considered
@@ -563,17 +595,21 @@ class Door(_BaseWithShade):
             try:  # see if it is self-intersecting because of a duplicate vertex
                 new_geo = self.geometry.remove_duplicate_vertices(tolerance)
                 if not new_geo.is_self_intersecting:
-                    return [] if detailed else ''  # valid with removed dup vertex
+                    return [] if detailed else ""  # valid with removed dup vertex
             except AssertionError:
-                return [] if detailed else ''  # degenerate geometry
+                return [] if detailed else ""  # degenerate geometry
             full_msg = self._validation_message(
-                msg, raise_exception, detailed, '000102',
-                error_type='Self-Intersecting Geometry')
+                msg,
+                raise_exception,
+                detailed,
+                "000102",
+                error_type="Self-Intersecting Geometry",
+            )
             if detailed:  # add the self-intersection points to helper_geometry
                 help_pts = [p.to_dict() for p in self.geometry.self_intersection_points]
-                full_msg[0]['helper_geometry'] = help_pts
+                full_msg[0]["helper_geometry"] = help_pts
             return full_msg
-        return [] if detailed else ''
+        return [] if detailed else ""
 
     def display_dict(self):
         """Get a list of DisplayFace3D dictionaries for visualizing the object."""
@@ -613,21 +649,23 @@ class Door(_BaseWithShade):
                 X/Y axes of the plane but is not required and can be removed to
                 keep the dictionary smaller. (Default: True).
         """
-        base = {'type': 'Door'}
-        base['identifier'] = self.identifier
-        base['display_name'] = self.display_name
-        base['properties'] = self.properties.to_dict(abridged, included_prop)
-        enforce_upper_left = True if 'energy' in base['properties'] else False
-        base['geometry'] = self._geometry.to_dict(include_plane, enforce_upper_left)
-        base['is_glass'] = self.is_glass
-        if isinstance(self.boundary_condition, Outdoors) and \
-                'energy' in base['properties']:
-            base['boundary_condition'] = self.boundary_condition.to_dict(full=True)
+        base = {"type": "Door"}
+        base["identifier"] = self.identifier
+        base["display_name"] = self.display_name
+        base["properties"] = self.properties.to_dict(abridged, included_prop)
+        enforce_upper_left = True if "energy" in base["properties"] else False
+        base["geometry"] = self._geometry.to_dict(include_plane, enforce_upper_left)
+        base["is_glass"] = self.is_glass
+        if (
+            isinstance(self.boundary_condition, Outdoors)
+            and "energy" in base["properties"]
+        ):
+            base["boundary_condition"] = self.boundary_condition.to_dict(full=True)
         else:
-            base['boundary_condition'] = self.boundary_condition.to_dict()
+            base["boundary_condition"] = self.boundary_condition.to_dict()
         self._add_shades_to_dict(base, abridged, included_prop, include_plane)
         if self.user_data is not None:
-            base['user_data'] = self.user_data
+            base["user_data"] = self.user_data
         return base
 
     def _reset_parent_geometry(self):
@@ -636,8 +674,9 @@ class Door(_BaseWithShade):
             self._parent._punched_geometry = None
 
     def __copy__(self):
-        new_door = Door(self.identifier, self.geometry, self.boundary_condition,
-                        self.is_glass)
+        new_door = Door(
+            self.identifier, self.geometry, self.boundary_condition, self.is_glass
+        )
         new_door._display_name = self._display_name
         new_door._user_data = None if self.user_data is None else self.user_data.copy()
         self._duplicate_child_shades(new_door)
@@ -645,4 +684,4 @@ class Door(_BaseWithShade):
         return new_door
 
     def __repr__(self):
-        return 'Door: %s' % self.display_name
+        return "Door: %s" % self.display_name

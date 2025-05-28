@@ -9,9 +9,10 @@ import re
 import json
 import math
 import uuid
+from typing import Any
 
 try:  # check if we are in IronPython
-    import cPickle as pickle
+    import cPickle as pickle  # type: ignore
 except ImportError:  # wea are in cPython
     import pickle
 
@@ -154,7 +155,7 @@ class Model(_Base):
 
         self._rooms = []
         self._orphaned_faces = []
-        self._orphaned_apertures = []
+        self._orphaned_apertures: list[Aperture] = []
         self._orphaned_doors = []
         self._orphaned_shades = []
         self._shade_meshes = []
@@ -177,7 +178,8 @@ class Model(_Base):
             for shade_mesh in shade_meshes:
                 self.add_shade_mesh(shade_mesh)
 
-        self._properties = ModelProperties(self)
+        # self._properties = ModelProperties(self)
+        self.properties = ModelProperties(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> "Model":
@@ -853,7 +855,7 @@ class Model(_Base):
     @property
     def apertures(self):
         """Get a list of all Aperture objects in the model."""
-        child_apertures = []
+        child_apertures: list[Aperture] = []
         for room in self._rooms:
             for face in room._faces:
                 child_apertures.extend(face._apertures)
@@ -2283,7 +2285,7 @@ class Model(_Base):
             other_model = other_model.duplicate()
             other_model.convert_to_units(self.units)
         # set up lists and dictionaries of objects for comparison
-        compare_dict = {"type": "ComparisonReport"}
+        compare_dict: dict[str, Any] = {"type": "ComparisonReport"}
         self_dict = self.top_level_dict
         other_dict = other_model.top_level_dict
         # loop through the new objects and detect changes between them
@@ -2373,7 +2375,7 @@ class Model(_Base):
         assert self.angle_tolerance != 0, (
             "Model must have a non-zero angle_tolerance to perform geometry checks."
         )
-        msgs = self._properties._check_for_extension(extension_name, detailed)
+        msgs = self._properties._check_for_extension(extension_name, detailed)  # type: ignore
         if detailed:
             msgs = [m for m in msgs if isinstance(m, list)]
 
@@ -2381,7 +2383,7 @@ class Model(_Base):
         full_msgs = [msg for msg in msgs if msg]
         if detailed:
             return [m for msg in full_msgs for m in msg]
-        full_msg = "\n".join(full_msgs)
+        full_msg = "\n".join(full_msgs)  # type: ignore
         if raise_exception and len(full_msgs) != 0:
             raise ValueError(full_msg)
         return full_msg
@@ -2440,7 +2442,7 @@ class Model(_Base):
         msgs.append(self.check_all_air_boundaries_adjacent(False, detailed))
 
         # check the extension attributes
-        ext_msgs = self._properties._check_all_extension_attr(detailed)
+        ext_msgs = self._properties._check_all_extension_attr(detailed)  # type: ignore
         if detailed:
             ext_msgs = [m for m in ext_msgs if isinstance(m, list)]
         msgs.extend(ext_msgs)
@@ -3279,8 +3281,8 @@ class Model(_Base):
                 * 2 = The identifier of the parent Room of the parent Face of the
                   original Aperture (if it exists).
         """
-        triangulated_apertures = []
-        parents_to_edit = []
+        triangulated_apertures: list[list[Aperture]] = []
+        parents_to_edit: list[list[Aperture]] = []
         all_apertures = self.apertures
         adj_check = []  # confirms when interior apertures are triangulated by adjacency
         for ap in all_apertures:
@@ -3305,14 +3307,15 @@ class Model(_Base):
                             break
                     new_adj_ap_geo = [face.flip() for face in new_ap_geo]
                     new_adj_aps, edit_in = self._replace_aperture(
-                        adj_ap, new_adj_ap_geo
+                        adj_ap,  # type: ignore
+                        new_adj_ap_geo,
                     )
                     for new_ap, new_adj_ap in zip(new_aps, new_adj_aps):
                         new_ap.set_adjacency(new_adj_ap)
                     triangulated_apertures.append(new_adj_aps)
                     if edit_in is not None:
                         parents_to_edit.append(edit_in)
-                    adj_check.append(adj_ap.identifier)
+                    adj_check.append(adj_ap.identifier)  # type: ignore
         return triangulated_apertures, parents_to_edit
 
     def triangulated_doors(self):
@@ -3342,8 +3345,8 @@ class Model(_Base):
                 * 2 = The identifier of the parent Room of the parent Face of the
                   original Door (if it exists).
         """
-        triangulated_doors = []
-        parents_to_edit = []
+        triangulated_doors: list[list[Door]] = []
+        parents_to_edit: list[list[Door]] = []
         all_doors = self.doors
         adj_check = []  # confirms when interior doors are triangulated by adjacency
         for dr in all_doors:
@@ -3367,13 +3370,13 @@ class Model(_Base):
                             adj_dr = other_dr
                             break
                     new_adj_dr_geo = [face.flip() for face in new_dr_geo]
-                    new_adj_drs, edit_in = self._replace_door(adj_dr, new_adj_dr_geo)
+                    new_adj_drs, edit_in = self._replace_door(adj_dr, new_adj_dr_geo)  # type: ignore
                     for new_dr, new_adj_dr in zip(new_drs, new_adj_drs):
                         new_dr.set_adjacency(new_adj_dr)
                     triangulated_doors.append(new_adj_drs)
                     if edit_in is not None:
                         parents_to_edit.append(edit_in)
-                    adj_check.append(adj_dr.identifier)
+                    adj_check.append(adj_dr.identifier)  # type: ignore
         return triangulated_doors, parents_to_edit
 
     def _remove_sliver_geometries(self, face3ds):
@@ -3417,7 +3420,7 @@ class Model(_Base):
                 clean_objects.append(geo_obj)
         return clean_objects
 
-    def _replace_aperture(self, original_ap, new_ap_geo):
+    def _replace_aperture(self, original_ap: Aperture, new_ap_geo: list[Face3D]):
         """Get new Apertures generated from new_ap_geo and the properties of original_ap.
 
         Note that this method does not re-link the new apertures to new adjacent
@@ -3445,7 +3448,7 @@ class Model(_Base):
                   original Aperture (if it exists).
         """
         # make the new Apertures and add them to the model
-        new_aps = []
+        new_aps: list[Aperture] = []
         for i, ap_face in enumerate(new_ap_geo):
             new_ap = Aperture(
                 "{}..{}".format(original_ap.identifier, i),
@@ -3470,13 +3473,16 @@ class Model(_Base):
 
         # create the parent edit info
         parent_edit_info = [original_ap.identifier]
-        if original_ap.has_parent:
+        if original_ap.has_parent and original_ap.parent:
+            assert (
+                original_ap.parent is not None
+            )  # this assert tells my linter to shut -A.A
             parent_edit_info.append(original_ap.parent.identifier)
             if original_ap.parent.has_parent:
                 parent_edit_info.append(original_ap.parent.parent.identifier)
         return new_aps, parent_edit_info
 
-    def _replace_door(self, original_dr, new_dr_geo):
+    def _replace_door(self, original_dr: Door, new_dr_geo: list[Face3D]):
         """Get new Doors generated from new_dr_geo and the properties of original_dr.
 
         Note that this method does not re-link the new doors to new adjacent
@@ -3504,7 +3510,7 @@ class Model(_Base):
                   original Door (if it exists).
         """
         # make the new doors and add them to the model
-        new_drs = []
+        new_drs: list[Door] = []
         for i, dr_face in enumerate(new_dr_geo):
             new_dr = Door("{}..{}".format(original_dr.identifier, i), dr_face)
             new_dr._properties = (
@@ -3525,8 +3531,14 @@ class Model(_Base):
         # create the parent edit info
         parent_edit_info = [original_dr.identifier]
         if original_dr.has_parent:
+            assert (
+                original_dr.parent is not None
+            )  # this assert tells my linter to shut -A.A
             parent_edit_info.append(original_dr.parent.identifier)
             if original_dr.parent.has_parent:
+                assert (
+                    original_dr.parent.parent is not None
+                )  # this assert tells my linter to shut -A.A
                 parent_edit_info.append(original_dr.parent.parent.identifier)
         return new_drs, parent_edit_info
 
@@ -3569,7 +3581,7 @@ class Model(_Base):
                 keep the dictionary smaller. (Default: True).
         """
         # write all of the geometry objects and their properties
-        base = {"type": "Model"}
+        base: dict[str, Any] = {"type": "Model"}
         base["identifier"] = self.identifier
         base["display_name"] = self.display_name
         base["units"] = self.units
@@ -3615,32 +3627,55 @@ class Model(_Base):
                     for room in base["rooms"]:
                         if room["identifier"] == edit_infos[2]:
                             break
-                    for face in room["faces"]:
-                        if face["identifier"] == edit_infos[1]:
-                            break
-                    for i, ap in enumerate(face["apertures"]):
-                        if ap["identifier"] == edit_infos[0]:
-                            break
-                    del face["apertures"][i]
-                    face["apertures"].extend(
-                        [a.to_dict(True, included_prop) for a in tri_aps]
-                    )
+
+                        # shouldn't these be nested loops? otherwise the variables might be unbound right? - A.A
+                        for face in room["faces"]:
+                            if face["identifier"] == edit_infos[1]:
+                                break
+                            for i, ap in enumerate(face["apertures"]):
+                                if ap["identifier"] == edit_infos[0]:
+                                    break
+                                del face["apertures"][i]
+                                face["apertures"].extend(
+                                    [a.to_dict(True, included_prop) for a in tri_aps]
+                                )
+                    # for face in room["faces"]:
+                    #     if face["identifier"] == edit_infos[1]:
+                    #         break
+                    # for i, ap in enumerate(face["apertures"]):
+                    #     if ap["identifier"] == edit_infos[0]:
+                    #         break
+                    # del face["apertures"][i]
+                    # face["apertures"].extend(
+                    #     [a.to_dict(True, included_prop) for a in tri_aps]
+                    # )
             doors, parents_to_edit = self.triangulated_doors()
             for tri_drs, edit_infos in zip(doors, parents_to_edit):
                 if len(edit_infos) == 3:
                     for room in base["rooms"]:
                         if room["identifier"] == edit_infos[2]:
                             break
-                    for face in room["faces"]:
-                        if face["identifier"] == edit_infos[1]:
-                            break
-                    for i, ap in enumerate(face["doors"]):
-                        if ap["identifier"] == edit_infos[0]:
-                            break
-                    del face["doors"][i]
-                    face["doors"].extend(
-                        [dr.to_dict(True, included_prop) for dr in tri_drs]
-                    )
+                        # shouldn't these be nested loops? otherwise the variables might be unbound right? - A.A
+                        for face in room["faces"]:
+                            if face["identifier"] == edit_infos[1]:
+                                break
+                            for i, ap in enumerate(face["doors"]):
+                                if ap["identifier"] == edit_infos[0]:
+                                    break
+                                del face["doors"][i]
+                                face["doors"].extend(
+                                    [dr.to_dict(True, included_prop) for dr in tri_drs]
+                                )
+                    # for face in room["faces"]:
+                    #     if face["identifier"] == edit_infos[1]:
+                    #         break
+                    # for i, ap in enumerate(face["doors"]):
+                    #     if ap["identifier"] == edit_infos[0]:
+                    #         break
+                    # del face["doors"][i]
+                    # face["doors"].extend(
+                    #     [dr.to_dict(True, included_prop) for dr in tri_drs]
+                    # )
 
         # write in the optional keys if they are not None
         if self.user_data is not None:
@@ -4064,7 +4099,8 @@ class Model(_Base):
         )
         new_model._display_name = self._display_name
         new_model._user_data = None if self.user_data is None else self.user_data.copy()
-        new_model._properties._duplicate_extension_attr(self._properties)
+        if new_model._properties is not None:  # this check tells my linter to shut -A.A
+            new_model._properties._duplicate_extension_attr(self._properties)
         return new_model
 
     def __repr__(self):
