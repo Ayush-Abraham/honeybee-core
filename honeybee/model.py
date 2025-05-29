@@ -41,6 +41,8 @@ from .facetype import AirBoundary, Wall, Floor, RoofCeiling, face_types
 import honeybee.writer.model as writer
 from honeybee.boundarycondition import boundary_conditions as bcs
 
+from honeybee_schema.comparison import SyncInstructions
+
 try:
     ad_bc = bcs.adiabatic  # type: ignore
 except AttributeError:  # honeybee_energy is not loaded and adiabatic does not exist
@@ -153,12 +155,12 @@ class Model(_Base):
         self.tolerance = tolerance
         self.angle_tolerance = angle_tolerance
 
-        self._rooms = []
-        self._orphaned_faces = []
+        self._rooms: list[Room] = []
+        self._orphaned_faces: list[Face] = []
         self._orphaned_apertures: list[Aperture] = []
-        self._orphaned_doors = []
-        self._orphaned_shades = []
-        self._shade_meshes = []
+        self._orphaned_doors: list[Door] = []
+        self._orphaned_shades: list[Shade] = []
+        self._shade_meshes: list[ShadeMesh] = []
         if rooms is not None:
             for room in rooms:
                 self.add_room(room)
@@ -281,7 +283,7 @@ class Model(_Base):
         return model
 
     @classmethod
-    def from_file(cls, hb_file):
+    def from_file(cls, hb_file: str):
         """Initialize a Model from a HBJSON or HBpkl file, auto-sensing the type.
 
         Args:
@@ -316,7 +318,7 @@ class Model(_Base):
         return cls.from_dict(data)
 
     @classmethod
-    def from_hbpkl(cls, hbpkl_file):
+    def from_hbpkl(cls, hbpkl_file: str):
         """Initialize a Model from a HBpkl file.
 
         Args:
@@ -330,10 +332,10 @@ class Model(_Base):
     @classmethod
     def from_stl(
         cls,
-        file_path,
+        file_path: str,
         geometry_to_faces=False,
         units="Meters",
-        tolerance=None,
+        tolerance: float | None = None,  # i understand that tolerance is a float? -A.A
         angle_tolerance=1.0,
     ):
         """Create a Honeybee Model from an STL file.
@@ -391,7 +393,9 @@ class Model(_Base):
             )
 
     @classmethod
-    def from_sync(cls, base_model, other_model, sync_instructions):
+    def from_sync(
+        cls, base_model: "Model", other_model: "Model", sync_instructions: dict
+    ):
         """Initialize a Model from two models and instructions for syncing them.
 
         The SyncInstructions dictionary schema is essentially a variant of the
@@ -474,7 +478,9 @@ class Model(_Base):
         return new_model
 
     @classmethod
-    def from_sync_files(cls, base_model_file, other_model_file, sync_instructions_file):
+    def from_sync_files(
+        cls, base_model_file: str, other_model_file: str, sync_instructions_file: str
+    ):
         """Initialize a Model from two model files and instructions for syncing them.
 
         Args:
@@ -508,7 +514,12 @@ class Model(_Base):
 
     @classmethod
     def from_objects(
-        cls, identifier, objects, units="Meters", tolerance=None, angle_tolerance=1.0
+        cls,
+        identifier: str,
+        objects: str,
+        units="Meters",
+        tolerance=None,
+        angle_tolerance=1.0,
     ):
         """Initialize a Model from a list of any type of honeybee-core geometry objects.
 
@@ -578,9 +589,9 @@ class Model(_Base):
     @classmethod
     def from_shoe_box(
         cls,
-        width,
-        depth,
-        height,
+        width: float,
+        depth: float,
+        height: float,
         orientation_angle=0,
         window_ratio=0,
         adiabatic=True,
@@ -640,8 +651,8 @@ class Model(_Base):
     @classmethod
     def from_rectangle_plan(
         cls,
-        width,
-        length,
+        width: float,
+        length: float,
         floor_to_floor_height,
         perimeter_offset=0,
         story_count=1,
@@ -715,11 +726,11 @@ class Model(_Base):
     @classmethod
     def from_l_shaped_plan(
         cls,
-        width_1,
-        length_1,
-        width_2,
-        length_2,
-        floor_to_floor_height,
+        width_1: float,
+        length_1: float,
+        width_2: float,
+        length_2: float,
+        floor_to_floor_height: float,
         perimeter_offset=0,
         story_count=1,
         orientation_angle=0,
@@ -801,7 +812,7 @@ class Model(_Base):
         return self._units
 
     @units.setter
-    def units(self, value):
+    def units(self, value: str):
         value = value.title()
         assert value in UNITS, (
             "{} is not supported as a units system. "
@@ -877,7 +888,7 @@ class Model(_Base):
     @property
     def shades(self):
         """Get a list of all Shade objects in the model."""
-        child_shades = []
+        child_shades: list[Shade] = []
         for room in self._rooms:
             child_shades.extend(room.shades)
             for face in room.faces:
@@ -901,7 +912,7 @@ class Model(_Base):
     @property
     def indoor_shades(self):
         """Get a list of all indoor Shade objects in the model."""
-        child_shades = []
+        child_shades: list[Shade] = []
         for room in self._rooms:
             child_shades.extend(room._indoor_shades)
             for face in room.faces:
@@ -928,7 +939,7 @@ class Model(_Base):
 
         This includes all of the orphaned_shades.
         """
-        child_shades = []
+        child_shades: list[Shade] = []
         for room in self._rooms:
             child_shades.extend(room._outdoor_shades)
             for face in room.faces:
@@ -955,7 +966,7 @@ class Model(_Base):
         return tuple(self._shade_meshes)
 
     @property
-    def grouped_shades(self):
+    def grouped_shades(self) -> list[list[Shade | ShadeMesh]]:
         """Get a list of lists where each sub-list contains Shades and/or ShadeMeshes
         with the same display_name.
 
@@ -1003,7 +1014,7 @@ class Model(_Base):
 
         Note that this will be an empty list if the model has to rooms.
         """
-        _stories = set()
+        _stories: set[str] = set()
         for room in self._rooms:
             if room.story is not None:
                 _stories.add(room.story)
@@ -1111,7 +1122,9 @@ class Model(_Base):
 
         This is useful for matching these objects to others using identifiers.
         """
-        base = {r.identifier: r for r in self._rooms}
+        base: dict[str, Room | Face | Aperture | Door | Shade | ShadeMesh] = {
+            r.identifier: r for r in self._rooms
+        }
         for f in self._orphaned_faces:
             base[f.identifier] = f
         for a in self._orphaned_apertures:
@@ -1135,7 +1148,7 @@ class Model(_Base):
 
         This is useful for grouping rooms by their Zone for export.
         """
-        zones = {}
+        zones: dict[str, list[Room]] = {}
         for room in self.rooms:
             try:
                 zones[room.zone].append(room)
@@ -1163,12 +1176,12 @@ class Model(_Base):
         for door in other_model._orphaned_doors:
             self._orphaned_doors.append(door)
 
-    def add_room(self, obj):
+    def add_room(self, obj: Room):
         """Add a Room object to the model."""
         assert isinstance(obj, Room), "Expected Room. Got {}.".format(type(obj))
         self._rooms.append(obj)
 
-    def add_face(self, obj):
+    def add_face(self, obj: Face):
         """Add an orphaned Face object without a parent to the model."""
         assert isinstance(obj, Face), "Expected Face. Got {}.".format(type(obj))
         assert not obj.has_parent, (
@@ -1177,7 +1190,7 @@ class Model(_Base):
         )
         self._orphaned_faces.append(obj)
 
-    def add_aperture(self, obj):
+    def add_aperture(self, obj: Aperture):
         """Add an orphaned Aperture object to the model."""
         assert isinstance(obj, Aperture), "Expected Aperture. Got {}.".format(type(obj))
         assert not obj.has_parent, (
@@ -1186,7 +1199,7 @@ class Model(_Base):
         )
         self._orphaned_apertures.append(obj)
 
-    def add_door(self, obj):
+    def add_door(self, obj: Door):
         """Add an orphaned Door object to the model."""
         assert isinstance(obj, Door), "Expected Door. Got {}.".format(type(obj))
         assert not obj.has_parent, (
@@ -1195,7 +1208,7 @@ class Model(_Base):
         )
         self._orphaned_doors.append(obj)
 
-    def add_shade(self, obj):
+    def add_shade(self, obj: Shade):
         """Add an orphaned Shade object to the model, typically representing context."""
         assert isinstance(obj, Shade), "Expected Shade. Got {}.".format(type(obj))
         assert not obj.has_parent, (
@@ -1204,7 +1217,7 @@ class Model(_Base):
         )
         self._orphaned_shades.append(obj)
 
-    def add_shade_mesh(self, obj):
+    def add_shade_mesh(self, obj: ShadeMesh):
         """Add a ShadeMesh object to the model."""
         assert isinstance(obj, ShadeMesh), "Expected ShadeMesh. Got {}.".format(
             type(obj)
@@ -1341,17 +1354,17 @@ class Model(_Base):
         self.remove_shades()
         self.remove_assigned_shades()
 
-    def add_rooms(self, objs):
+    def add_rooms(self, objs: list[Room]):
         """Add a list of Room objects to the model."""
         for obj in objs:
             self.add_room(obj)
 
-    def add_faces(self, objs):
+    def add_faces(self, objs: list[Face]):
         """Add a list of orphaned Face objects to the model."""
         for obj in objs:
             self.add_face(obj)
 
-    def add_apertures(self, objs):
+    def add_apertures(self, objs: list[Aperture]):
         """Add a list of orphaned Aperture objects to the model."""
         for obj in objs:
             self.add_aperture(obj)
@@ -1371,9 +1384,10 @@ class Model(_Base):
         for obj in objs:
             self.add_shade_mesh(obj)
 
-    def rooms_by_identifier(self, identifiers):
+    def rooms_by_identifier(self, identifiers: list[str]):
         """Get a list of Room objects in the model given the Room identifiers."""
-        rooms, missing_ids = [], []
+        rooms: list[Room] = []
+        missing_ids: list[str] = []
         model_rooms = self._rooms
         for obj_id in identifiers:
             for room in model_rooms:
@@ -1389,9 +1403,10 @@ class Model(_Base):
             )
         return rooms
 
-    def faces_by_identifier(self, identifiers):
+    def faces_by_identifier(self, identifiers: list[str]):
         """Get a list of Face objects in the model given the Face identifiers."""
-        faces, missing_ids = [], []
+        faces: list[Face] = []
+        missing_ids: list[str] = []
         model_faces = self.faces
         for obj_id in identifiers:
             for face in model_faces:
@@ -1407,9 +1422,10 @@ class Model(_Base):
             )
         return faces
 
-    def apertures_by_identifier(self, identifiers):
+    def apertures_by_identifier(self, identifiers: list[str]):
         """Get a list of Aperture objects in the model given the Aperture identifiers."""
-        apertures, missing_ids = [], []
+        apertures: list[Aperture] = []
+        missing_ids: list[str] = []
         model_apertures = self.apertures
         for obj_id in identifiers:
             for aperture in model_apertures:
@@ -3628,7 +3644,7 @@ class Model(_Base):
                         if room["identifier"] == edit_infos[2]:
                             break
 
-                        # shouldn't these be nested loops? otherwise the variables might be unbound right? - A.A
+                        # shouldn't these be nested loops? otherwise the variables might be unbound right? CHANGED-A.A
                         for face in room["faces"]:
                             if face["identifier"] == edit_infos[1]:
                                 break
@@ -3655,7 +3671,7 @@ class Model(_Base):
                     for room in base["rooms"]:
                         if room["identifier"] == edit_infos[2]:
                             break
-                        # shouldn't these be nested loops? otherwise the variables might be unbound right? - A.A
+                        # shouldn't these be nested loops? otherwise the variables might be unbound right? CHANGED-A.A
                         for face in room["faces"]:
                             if face["identifier"] == edit_infos[1]:
                                 break

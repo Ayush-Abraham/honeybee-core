@@ -24,7 +24,7 @@ class _Base(object):
 
     __slots__ = ("_identifier", "_display_name", "_properties", "_user_data")
 
-    def __init__(self, identifier):
+    def __init__(self, identifier: str):
         """Initialize base object."""
         self.identifier = identifier
         self._display_name = None
@@ -42,7 +42,7 @@ class _Base(object):
         return self._identifier
 
     @identifier.setter
-    def identifier(self, value):
+    def identifier(self, value: str):
         self._identifier = valid_string(value, "honeybee object identifier")
 
     @property

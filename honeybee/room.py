@@ -35,7 +35,7 @@ from .orientation import angles_from_num_orient, orient_index
 from .search import get_attr_nested
 
 try:
-    ad_bc = boundary_conditions.adiabatic
+    ad_bc = boundary_conditions.adiabatic  # type: ignore
 except AttributeError:  # honeybee_energy is not loaded and adiabatic does not exist
     ad_bc = None
 
@@ -450,7 +450,7 @@ class Room(_BaseWithShade):
         return tuple(aps)
 
     @property
-    def geometry(self):
+    def geometry(self) -> Polyface3D:
         """Get a ladybug_geometry Polyface3D object representing the room."""
         if self._geometry is None:
             self._geometry = Polyface3D.from_faces(
@@ -1396,7 +1396,8 @@ class Room(_BaseWithShade):
                 geo_dict[face_1.identifier] = new_geo
 
         # use the split geometry to remake this room's faces
-        all_faces, new_faces = [], []
+        all_faces: list[Face] = []
+        new_faces: list[Face] = []
         for face in self.faces:
             int_faces = geo_dict[face.identifier]
             if len(int_faces) == 1:  # just use the old Face object
@@ -1866,7 +1867,8 @@ class Room(_BaseWithShade):
                     coplanar_dict[face.geometry.plane] = [face]
 
         # merge any of the coplanar Faces together
-        all_faces, new_faces = [], []
+        all_faces: list[Face] = []
+        new_faces: list[Face] = []
         for face_list in coplanar_dict.values():
             if len(face_list) == 1:  # no faces to merge
                 all_faces.append(face_list[0])
@@ -1997,7 +1999,8 @@ class Room(_BaseWithShade):
                     geo_dict[face_1.identifier] = new_geo
 
         # use the intersected geometry to remake this room's faces
-        all_faces, new_faces = [], []
+        all_faces: list[Face] = []
+        new_faces: list[Face] = []
         for face in self.faces:
             int_faces = geo_dict[face.identifier]
             if len(int_faces) == 1:  # just use the old Face object
@@ -2646,15 +2649,15 @@ class Room(_BaseWithShade):
 
     @staticmethod
     def rooms_from_rectangle_plan(
-        width,
-        length,
-        floor_to_floor_height,
+        width: float,
+        length: float,
+        floor_to_floor_height: float,
         perimeter_offset=0,
         story_count=1,
         orientation_angle=0,
         outdoor_roof=True,
         ground_floor=True,
-        unique_id=None,
+        unique_id: str | None = None,
         tolerance=0.01,
     ):
         """Create a Rooms that represent a rectangular floor plan.

@@ -111,7 +111,9 @@ class Face(_BaseWithShade):
         "Other": Color(255, 255, 200),
     }
 
-    def __init__(self, identifier, geometry, type=None, boundary_condition=None):
+    def __init__(
+        self, identifier, geometry: Face3D, type=None, boundary_condition=None
+    ):
         """A single planar face."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
 
@@ -293,12 +295,15 @@ class Face(_BaseWithShade):
         )
 
     @property
-    def geometry(self):
+    def geometry(self) -> Face3D:
         """Get a ladybug_geometry Face3D object representing the Face.
 
         Note that this Face3D only represents the parent face and does not have any
         holes cut in it for apertures or doors.
         """
+        assert (
+            type(self._geometry) is Face3D
+        )  # this assertion tells my linter to shut -A.A
         return self._geometry
 
     @property
@@ -1835,7 +1840,7 @@ class Face(_BaseWithShade):
         self.properties.move(moving_vec)
         self._punched_geometry = None  # reset so that it can be re-computed
 
-    def rotate(self, axis, angle, origin):
+    def rotate(self, axis: Vector3D, angle: float, origin: Point3D):
         """Rotate this Face by a certain angle around an axis and origin.
 
         Args:
