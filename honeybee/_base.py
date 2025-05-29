@@ -5,8 +5,6 @@ from ladybug_geometry.geometry3d.pointvector import Point3D
 
 from .typing import valid_string
 
-from honeybee.properties import ModelProperties
-
 
 class _Base(object):
     """A base class for all geometry objects.
@@ -88,7 +86,7 @@ class _Base(object):
         return self._properties
 
     @properties.setter
-    def properties(self, value: ModelProperties):
+    def properties(self, value):
         self._properties = value
 
     @property

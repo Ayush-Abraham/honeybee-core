@@ -3,6 +3,7 @@
 
 from __future__ import division
 import math
+from typing import TYPE_CHECKING
 
 from ladybug_geometry.geometry2d.pointvector import Vector2D
 from ladybug_geometry.geometry3d.pointvector import Point3D, Vector3D
@@ -15,6 +16,10 @@ from .properties import ApertureProperties
 from .boundarycondition import boundary_conditions, Outdoors, Surface
 from .shade import Shade
 import honeybee.writer.aperture as writer
+
+if TYPE_CHECKING:
+    from .face import Face
+    from .room import Room
 
 
 class Aperture(_BaseWithShade):
@@ -66,7 +71,11 @@ class Aperture(_BaseWithShade):
     }
 
     def __init__(
-        self, identifier, geometry: Face3D, boundary_condition=None, is_operable=False
+        self,
+        identifier: str,
+        geometry: Face3D,
+        boundary_condition=None,
+        is_operable=False,
     ):
         """A single planar aperture in a face."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
@@ -86,7 +95,7 @@ class Aperture(_BaseWithShade):
         self._properties = ApertureProperties(self)
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data) -> "Aperture":  # type: ignore
         """Initialize an Aperture from a dictionary.
 
         Args:
@@ -131,7 +140,11 @@ class Aperture(_BaseWithShade):
 
     @classmethod
     def from_vertices(
-        cls, identifier, vertices, boundary_condition=None, is_operable=False
+        cls,
+        identifier: str,
+        vertices: list[tuple[float, float, float]],
+        boundary_condition=None,
+        is_operable=False,
     ):
         """Create an Aperture from vertices with each vertex as an iterable of 3 floats.
 
@@ -173,7 +186,7 @@ class Aperture(_BaseWithShade):
         return self._is_operable
 
     @is_operable.setter
-    def is_operable(self, value):
+    def is_operable(self, value: bool):
         try:
             self._is_operable = bool(value)
         except TypeError:
@@ -182,14 +195,14 @@ class Aperture(_BaseWithShade):
             )
 
     @property
-    def parent(self):
+    def parent(self) -> "Face | None":
         """Get the parent Face if assigned. None if not assigned."""
         if self.has_parent:
             assert self._parent
         return self._parent
 
     @property
-    def top_level_parent(self):
+    def top_level_parent(self) -> "Room | Face | None":
         """Get the top-level parent object if assigned.
 
         This will be a Room if there is a parent Face that has a parent Room and
@@ -218,7 +231,7 @@ class Aperture(_BaseWithShade):
         return self._geometry.vertices
 
     @property
-    def upper_left_vertices(self):
+    def upper_left_vertices(self) -> list[Point3D]:
         """Get a list of vertices starting from the upper-left corner.
 
         This property should be used when exporting to EnergyPlus / OpenStudio.

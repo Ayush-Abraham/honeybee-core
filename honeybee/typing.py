@@ -4,6 +4,7 @@ import re
 import os
 import math
 import uuid
+from typing import TypeVar, Type
 
 try:
     INFPOS = math.inf
@@ -12,6 +13,8 @@ except AttributeError:
     # python 2
     INFPOS = float("inf")
     INFNEG = float("-inf")
+
+T = TypeVar("T")
 
 
 def valid_string(value: str, input_name=""):
@@ -183,7 +186,9 @@ def int_positive(value, input_name=""):
     return int_in_range(value, 0, INFPOS, input_name)
 
 
-def tuple_with_length(value, length=3, item_type=float, input_name=""):
+def tuple_with_length(
+    value: tuple[T, ...] | list[T], length=3, item_type: type[T] = float, input_name=""
+):
     """Try to create a tuple with a certain value."""
     try:
         value = tuple(item_type(v) for v in value)

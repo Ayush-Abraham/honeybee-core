@@ -112,7 +112,7 @@ class Face(_BaseWithShade):
     }
 
     def __init__(
-        self, identifier, geometry: Face3D, type=None, boundary_condition=None
+        self, identifier: str, geometry: Face3D, type=None, boundary_condition=None
     ):
         """A single planar face."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
@@ -128,7 +128,7 @@ class Face(_BaseWithShade):
         # initialize with no apertures/doors (they can be assigned later)
         self._punched_geometry = None
         self._apertures: list[Aperture] = []
-        self._doors = []
+        self._doors: list[Door] = []
 
         # initialize properties for extensions
         self._properties = FaceProperties(self)
@@ -144,7 +144,7 @@ class Face(_BaseWithShade):
         )
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data) -> "Face":  # type: ignore
         """Initialize an Face from a dictionary.
 
         Args:
@@ -203,7 +203,9 @@ class Face(_BaseWithShade):
             cls._from_dict_error_message(data, e)
 
     @classmethod
-    def from_vertices(cls, identifier, vertices, type=None, boundary_condition=None):
+    def from_vertices(
+        cls, identifier: str, vertices, type=None, boundary_condition=None
+    ):
         """Create a Face from vertices with each vertex as an iterable of 3 floats.
 
         Note that this method is not recommended for a face with one or more holes
@@ -341,7 +343,7 @@ class Face(_BaseWithShade):
         return self.punched_geometry.vertices
 
     @property
-    def upper_left_vertices(self):
+    def upper_left_vertices(self) -> list[Point3D]:
         """Get a list of vertices starting from the upper-left corner.
 
         This property obeys the same rules as the vertices property but always starts
@@ -393,7 +395,7 @@ class Face(_BaseWithShade):
         return self._calculate_max(all_geo)
 
     @property
-    def aperture_area(self):
+    def aperture_area(self) -> float:
         """Get the combined area of the face's apertures."""
         return sum([ap.area for ap in self._apertures])
 

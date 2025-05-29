@@ -1,4 +1,5 @@
 """Face Types."""
+
 from ladybug_geometry.geometry3d.pointvector import Vector3D
 import re
 import math
@@ -29,24 +30,28 @@ class _FaceType(object):
 
 class Wall(_FaceType):
     """Type for walls."""
+
     __slots__ = ()
     pass
 
 
 class RoofCeiling(_FaceType):
     """Type for roofs and ceilings."""
+
     __slots__ = ()
     pass
 
 
 class Floor(_FaceType):
     """Type for floors."""
+
     __slots__ = ()
     pass
 
 
 class AirBoundary(_FaceType):
     """Type for air boundaries (aka. virtual partitions) between Rooms."""
+
     __slots__ = ()
     pass
 
@@ -88,21 +93,25 @@ class _FaceTypes(object):
         """
         if self._type_name_dict is None:
             self._build_type_name_dict()
+        assert (
+            self._type_name_dict is not None
+        )  # this assert tells my linter to shut -A.A
         try:
-            return self._type_name_dict[re.sub(r'[\s_]', '', face_type_name.lower())]
+            return self._type_name_dict[re.sub(r"[\s_]", "", face_type_name.lower())]
         except KeyError:
             raise ValueError(
                 '"{}" is not a valid face type name.\nChoose from the following'
-                ': {}'.format(face_type_name, list(self._type_name_dict.keys())))
+                ": {}".format(face_type_name, list(self._type_name_dict.keys()))
+            )
 
     def _build_type_name_dict(self):
         """Build a dictionary that can be used to lookup face types by name."""
-        attr = [atr for atr in dir(self) if not atr.startswith('_')]
-        clean_attr = [re.sub(r'[\s_]', '', atr.lower()) for atr in attr]
+        attr = [atr for atr in dir(self) if not atr.startswith("_")]
+        clean_attr = [re.sub(r"[\s_]", "", atr.lower()) for atr in attr]
         self._type_name_dict = {}
         for atr_name, atr in zip(clean_attr, attr):
             try:
-                full_attr = getattr(self, '_' + atr)
+                full_attr = getattr(self, "_" + atr)
                 self._type_name_dict[atr_name] = full_attr
             except AttributeError:
                 pass  # callable method that has no static default object
@@ -111,8 +120,10 @@ class _FaceTypes(object):
         return isinstance(value, _FaceType)
 
     def __repr__(self):
-        attr = [atr for atr in dir(self) if not atr.startswith('_') and atr != 'by_name']
-        return 'Face Types:\n{}'.format('\n'.join(attr))
+        attr = [
+            atr for atr in dir(self) if not atr.startswith("_") and atr != "by_name"
+        ]
+        return "Face Types:\n{}".format("\n".join(attr))
 
 
 face_types = _FaceTypes()

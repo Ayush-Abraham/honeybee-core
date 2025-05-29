@@ -162,7 +162,7 @@ class Surface(_BoundaryCondition):
 
     __slots__ = ("_boundary_condition_objects",)
 
-    def __init__(self, boundary_condition_objects, sub_face=False):
+    def __init__(self, boundary_condition_objects: list[str], sub_face=False):
         """Initialize Surface boundary condition.
 
         Args:
