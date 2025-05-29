@@ -161,7 +161,7 @@ class Room(_BaseWithShade):
         self._properties = RoomProperties(self)  # properties for extensions
 
     @classmethod
-    def from_dict(cls, data, tolerance=0.0, angle_tolerance=0.0):
+    def from_dict(cls, data, tolerance=0.0, angle_tolerance=0.0) -> "Room":  # type: ignore
         """Initialize an Room from a dictionary.
 
         Args:
@@ -212,7 +212,12 @@ class Room(_BaseWithShade):
 
     @classmethod
     def from_polyface3d(
-        cls, identifier, polyface, roof_angle=60, floor_angle=130, ground_depth=0.0
+        cls,
+        identifier,
+        polyface: Polyface3D,
+        roof_angle=60,
+        floor_angle=130,
+        ground_depth=0.0,
     ):
         """Initialize a Room from a ladybug_geometry Polyface3D object.
 
@@ -256,7 +261,7 @@ class Room(_BaseWithShade):
     @classmethod
     def from_box(
         cls,
-        identifier,
+        identifier: str,
         width=3.0,
         depth=6.0,
         height=3.2,
@@ -327,7 +332,7 @@ class Room(_BaseWithShade):
         return self._multiplier
 
     @multiplier.setter
-    def multiplier(self, value):
+    def multiplier(self, value: int):
         self._multiplier = int_in_range(value, 1, input_name="room multiplier")
 
     @property
@@ -346,7 +351,7 @@ class Room(_BaseWithShade):
         return self._zone
 
     @zone.setter
-    def zone(self, value):
+    def zone(self, value: str):
         if value is not None:
             try:
                 self._zone = str(value)
@@ -356,7 +361,7 @@ class Room(_BaseWithShade):
             self._zone = value
 
     @property
-    def story(self):
+    def story(self) -> str | None:
         """Get or set text for the story identifier to which this Room belongs.
 
         Rooms sharing the same story identifier are considered part of the same
@@ -366,7 +371,7 @@ class Room(_BaseWithShade):
         return self._story
 
     @story.setter
-    def story(self, value):
+    def story(self, value: str | None):
         if value is not None:
             try:
                 self._story = str(value)
@@ -431,7 +436,7 @@ class Room(_BaseWithShade):
     @property
     def apertures(self):
         """Get a tuple of all Apertures of the Room."""
-        aps = []
+        aps: list[Aperture] = []
         for face in self._faces:
             if len(face._apertures) > 0:
                 aps.extend(face._apertures)
@@ -440,7 +445,7 @@ class Room(_BaseWithShade):
     @property
     def exterior_apertures(self):
         """Get a tuple of all exterior Apertures of the Room."""
-        aps = []
+        aps: list[Aperture] = []
         for face in self._faces:
             if (
                 isinstance(face.boundary_condition, Outdoors)
@@ -503,7 +508,7 @@ class Room(_BaseWithShade):
         return sum([face.area for face in self._faces if isinstance(face.type, Floor)])
 
     @property
-    def exposed_area(self):
+    def exposed_area(self) -> float:
         """Get the combined area of all room faces with outdoor boundary conditions.
 
         Useful for estimating infiltration, often expressed as a flow per
@@ -524,7 +529,7 @@ class Room(_BaseWithShade):
         This is NOT the area of the wall's punched_geometry and it includes BOTH
         the area of opaque and transparent parts of the walls.
         """
-        wall_areas = 0
+        wall_areas = 0.0
         for f in self._faces:
             if isinstance(f.boundary_condition, Outdoors) and isinstance(f.type, Wall):
                 wall_areas += f.area
@@ -537,7 +542,7 @@ class Room(_BaseWithShade):
         This is NOT the area of the roof's punched_geometry and it includes BOTH
         the area of opaque and transparent parts of the roofs.
         """
-        wall_areas = 0
+        wall_areas = 0.0
         for f in self._faces:
             if isinstance(f.boundary_condition, Outdoors) and isinstance(
                 f.type, RoofCeiling
@@ -548,7 +553,7 @@ class Room(_BaseWithShade):
     @property
     def exterior_aperture_area(self):
         """Get the combined area of all exterior apertures on the room."""
-        ap_areas = 0
+        ap_areas = 0.0
         for face in self._faces:
             if (
                 isinstance(face.boundary_condition, Outdoors)
@@ -560,7 +565,7 @@ class Room(_BaseWithShade):
     @property
     def exterior_wall_aperture_area(self):
         """Get the combined area of all apertures on exterior walls of the room."""
-        ap_areas = 0
+        ap_areas = 0.0
         for face in self._faces:
             if (
                 isinstance(face.boundary_condition, Outdoors)
@@ -573,7 +578,7 @@ class Room(_BaseWithShade):
     @property
     def exterior_skylight_aperture_area(self):
         """Get the combined area of all apertures on exterior roofs of the room."""
-        ap_areas = 0
+        ap_areas = 0.0
         for face in self._faces:
             if (
                 isinstance(face.boundary_condition, Outdoors)
@@ -1548,7 +1553,11 @@ class Room(_BaseWithShade):
         return full_msg
 
     def check_sub_faces_valid(
-        self, tolerance=0.01, angle_tolerance=1, raise_exception=True, detailed=False
+        self,
+        tolerance=0.01,
+        angle_tolerance: float = 1.0,
+        raise_exception=True,
+        detailed=False,
     ):
         """Check that room's sub-faces are co-planar with faces and in the face boundary.
 
@@ -1803,7 +1812,7 @@ class Room(_BaseWithShade):
         )
 
     def merge_coplanar_faces(
-        self, tolerance=0.01, angle_tolerance=1, orthogonal_only=False
+        self, tolerance=0.01, angle_tolerance=1.0, orthogonal_only=False
     ):
         """Merge coplanar Faces of this Room.
 

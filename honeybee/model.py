@@ -1596,6 +1596,9 @@ class Model(_Base):
                         new_bc = Surface(new_objs)
                         face.boundary_condition = new_bc
                         for ap in face.apertures:
+                            assert isinstance(
+                                ap.boundary_condition, Surface
+                            )  # boundary_condition_objects is only available to Surface, so this should be Surface right? -A.A
                             old_objs = ap.boundary_condition.boundary_condition_objects
                             try:
                                 new_objs = (
@@ -1663,7 +1666,7 @@ class Model(_Base):
         air_boundary=False,
         adiabatic=False,
         tolerance=None,
-        angle_tolerance=None,
+        angle_tolerance: float | None = None,
     ):
         """Solve adjacency between Rooms of the Model.
 
@@ -2734,7 +2737,11 @@ class Model(_Base):
         return full_msg
 
     def check_sub_faces_valid(
-        self, tolerance=None, angle_tolerance=None, raise_exception=True, detailed=False
+        self,
+        tolerance=None,
+        angle_tolerance: float | None = None,
+        raise_exception=True,
+        detailed=False,
     ):
         """Check that model's sub-faces are co-planar with faces and in their boundary.
 

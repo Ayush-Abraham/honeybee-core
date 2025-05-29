@@ -127,7 +127,7 @@ class Face(_BaseWithShade):
         )
         # initialize with no apertures/doors (they can be assigned later)
         self._punched_geometry = None
-        self._apertures = []
+        self._apertures: list[Aperture] = []
         self._doors = []
 
         # initialize properties for extensions

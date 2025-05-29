@@ -5,7 +5,7 @@ from __future__ import division
 import math
 
 from ladybug_geometry.geometry2d.pointvector import Vector2D
-from ladybug_geometry.geometry3d.pointvector import Point3D
+from ladybug_geometry.geometry3d.pointvector import Point3D, Vector3D
 from ladybug_geometry.geometry3d.face import Face3D
 from ladybug.color import Color
 
@@ -66,7 +66,7 @@ class Aperture(_BaseWithShade):
     }
 
     def __init__(
-        self, identifier, geometry, boundary_condition=None, is_operable=False
+        self, identifier, geometry: Face3D, boundary_condition=None, is_operable=False
     ):
         """A single planar aperture in a face."""
         _BaseWithShade.__init__(self, identifier)  # process the identifier
@@ -208,7 +208,7 @@ class Aperture(_BaseWithShade):
         return self._parent is not None
 
     @property
-    def geometry(self):
+    def geometry(self) -> Face3D:
         """Get a ladybug_geometry Face3D object representing the aperture."""
         return self._geometry
 
@@ -753,7 +753,7 @@ class Aperture(_BaseWithShade):
             self.add_outdoor_shades(louvers)
         return louvers
 
-    def move(self, moving_vec):
+    def move(self, moving_vec: Vector3D):
         """Move this Aperture along a vector.
 
         Args:

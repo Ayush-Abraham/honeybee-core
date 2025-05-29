@@ -1,5 +1,6 @@
 # coding: utf-8
 """Base class for all geometry objects that can have shades as children."""
+
 from ._base import _Base
 from .shade import Shade
 from .typing import invalid_dict_error
@@ -20,7 +21,8 @@ class _BaseWithShade(_Base):
         * indoor_shades
         * shades
     """
-    __slots__ = ('_outdoor_shades', '_indoor_shades')
+
+    __slots__ = ("_outdoor_shades", "_indoor_shades")
 
     def __init__(self, identifier):
         """Initialize base with shade object."""
@@ -59,7 +61,7 @@ class _BaseWithShade(_Base):
         for shade in self._indoor_shades:
             shade._parent = None
             shade._is_indoor = False
-        self._indoor_shades = []
+        self._indoor_shades: list[Shade] = []
 
     def add_outdoor_shade(self, shade):
         """Add a Shade object to the outdoors of this object.
@@ -73,9 +75,10 @@ class _BaseWithShade(_Base):
         Args:
             shade: A Shade object to add to the outdoors of this object.
         """
-        assert isinstance(shade, Shade), \
-            'Expected Shade for outdoor_shade. Got {}.'.format(type(shade))
-        assert shade.parent is None, 'Shade cannot have more than one parent object.'
+        assert isinstance(shade, Shade), (
+            "Expected Shade for outdoor_shade. Got {}.".format(type(shade))
+        )
+        assert shade.parent is None, "Shade cannot have more than one parent object."
         shade._parent = self
         shade._is_detached = False
         self._outdoor_shades.append(shade)
@@ -92,9 +95,10 @@ class _BaseWithShade(_Base):
         Args:
             shade: A Shade object to add to the indoors of this object.
         """
-        assert isinstance(shade, Shade), \
-            'Expected Shade for indoor_shade. Got {}.'.format(type(shade))
-        assert shade.parent is None, 'Shade cannot have more than one parent object.'
+        assert isinstance(shade, Shade), (
+            "Expected Shade for indoor_shade. Got {}.".format(type(shade))
+        )
+        assert shade.parent is None, "Shade cannot have more than one parent object."
         shade._parent = self
         shade._is_detached = False
         shade._is_indoor = True
@@ -202,7 +206,7 @@ class _BaseWithShade(_Base):
         for ishd in self._indoor_shades:
             msgs.append(ishd.check_planar(tolerance, False, detailed))
         flat_msgs = [m for m in msgs if m]
-        return flat_msgs if detailed else '\n'.join(flat_msgs)
+        return flat_msgs if detailed else "\n".join(flat_msgs)
 
     def _check_self_intersecting_shades(self, tolerance, detailed=False):
         """Check that no edges of the indoor or outdoor shades self-intersect."""
@@ -212,10 +216,11 @@ class _BaseWithShade(_Base):
         for ishd in self._indoor_shades:
             msgs.append(ishd.check_self_intersecting(tolerance, False, detailed))
         flat_msgs = [m for m in msgs if m]
-        return flat_msgs if detailed else '\n'.join(flat_msgs)
+        return flat_msgs if detailed else "\n".join(flat_msgs)
 
     def _add_shades_to_dict(
-            self, base, abridged=False, included_prop=None, include_plane=True):
+        self, base, abridged=False, included_prop=None, include_plane=True
+    ):
         """Method used to add child shades to the parent base dictionary.
 
         Args:
@@ -233,11 +238,15 @@ class _BaseWithShade(_Base):
                 keep the dictionary smaller. (Default: True).
         """
         if self._outdoor_shades != []:
-            base['outdoor_shades'] = [shd.to_dict(abridged, included_prop, include_plane)
-                                      for shd in self._outdoor_shades]
+            base["outdoor_shades"] = [
+                shd.to_dict(abridged, included_prop, include_plane)
+                for shd in self._outdoor_shades
+            ]
         if self._indoor_shades != []:
-            base['indoor_shades'] = [shd.to_dict(abridged, included_prop, include_plane)
-                                     for shd in self._indoor_shades]
+            base["indoor_shades"] = [
+                shd.to_dict(abridged, included_prop, include_plane)
+                for shd in self._indoor_shades
+            ]
 
     def _recover_shades_from_dict(self, data):
         """Method used to recover shades from a dictionary.
@@ -246,16 +255,16 @@ class _BaseWithShade(_Base):
             data: The dictionary representation of this object to which shades will
                 be added from the dictionary.
         """
-        if 'outdoor_shades' in data and data['outdoor_shades'] is not None:
-            for sh in data['outdoor_shades']:
+        if "outdoor_shades" in data and data["outdoor_shades"] is not None:
+            for sh in data["outdoor_shades"]:
                 try:
                     oshd = Shade.from_dict(sh)
                     oshd._parent = self
                     self._outdoor_shades.append(oshd)
                 except Exception as e:
                     invalid_dict_error(sh, e)
-        if 'indoor_shades' in data and data['indoor_shades'] is not None:
-            for sh in data['indoor_shades']:
+        if "indoor_shades" in data and data["indoor_shades"] is not None:
+            for sh in data["indoor_shades"]:
                 try:
                     ishd = Shade.from_dict(sh)
                     ishd._parent = self
