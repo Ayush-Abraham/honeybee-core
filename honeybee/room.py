@@ -494,7 +494,7 @@ class Room(_BaseWithShade):
         return self._calculate_max(all_geo)
 
     @property
-    def volume(self):
+    def volume(self) -> float:
         """Get the volume of the room.
 
         Note that, if this room faces do not form a closed solid the value of this
@@ -503,7 +503,7 @@ class Room(_BaseWithShade):
         return self.geometry.volume
 
     @property
-    def floor_area(self):
+    def floor_area(self) -> float:
         """Get the combined area of all room floor faces."""
         return sum([face.area for face in self._faces if isinstance(face.type, Floor)])
 

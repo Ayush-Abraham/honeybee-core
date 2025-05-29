@@ -13,6 +13,7 @@ def test_type_hints():
         model = Model.from_hbjson("some_file.json")
 
         for room in model.rooms:
+            room.volume
             for face in room.faces:
                 roomA_id = face.identifier
                 face.type
