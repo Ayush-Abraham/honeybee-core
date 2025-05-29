@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from honeybee.model import Model
+from honeybee.boundarycondition import Surface
 
 
 def test_type_hints():
@@ -13,6 +14,9 @@ def test_type_hints():
 
         for room in model.rooms:
             for face in room.faces:
+                roomA_id = face.identifier
                 face.type
-                for aperture in face.apertures:
-                    pass
+                if type(face.boundary_condition) is Surface:
+                    roomB_id = face.boundary_condition.boundary_condition_objects[0]
+
+                opening_area = sum(aperture.area for aperture in face.apertures)

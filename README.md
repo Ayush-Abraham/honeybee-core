@@ -8,6 +8,10 @@
 
 ***This fork relies on a [fork version of `honeybee-schema`](https://github.com/Ayush-Abraham/honeybee-schema) as one of its requirements.***
 
+***Currently, document generation is broken.***
+
+***Many type annotations and assert statements have been added to provide some type hinting and intellisense. It was quite tedious. 2/10 experience, do not recommend. -A.A***
+
 # honeybee-core
 
 Honeybee is a collection of Python libraries to create representations of buildings
